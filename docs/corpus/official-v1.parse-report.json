@@ -1,0 +1,851 @@
+{
+  "corpus_id": "official-v1",
+  "checked_at": "2026-10-25T19:09:30.674498+00:00",
+  "manifest_sha256": "eb1950b8c95be31c3a548addcdd809b0bf2c107a4291ec81f2968a4074e8333e",
+  "parser": "scripts.simple_ingest._extract_pages",
+  "pymupdf_version": "1.27.2.3",
+  "all_six_collected_and_parse_checked": true,
+  "application_ready": false,
+  "documents": [
+    {
+      "id": "zh-medical",
+      "status": "collected_project_parse_checked",
+      "sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "size_bytes": 418970,
+      "pages": 10,
+      "page_checks": [
+        {
+          "page": 1,
+          "characters": 932,
+          "invalid_characters": 0,
+          "text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        },
+        {
+          "page": 2,
+          "characters": 1170,
+          "invalid_characters": 0,
+          "text_sha256": "bdbfa4bfc7e79be6eeccfc92eabdb46ffe85a1b8c1f1f996514f34bdbef6955e"
+        },
+        {
+          "page": 3,
+          "characters": 1336,
+          "invalid_characters": 0,
+          "text_sha256": "30a71f056c21a892e264ea596c954789d2d608032948fd142f21e87a10a17572"
+        },
+        {
+          "page": 4,
+          "characters": 1337,
+          "invalid_characters": 0,
+          "text_sha256": "29598cf56103cfaa14139c01a79b77d50ab41695a0eade662e6ba17b2c3cd331"
+        },
+        {
+          "page": 5,
+          "characters": 1407,
+          "invalid_characters": 0,
+          "text_sha256": "47923d664318e27799c0305fd4f9a51cd6d55c10a0103e2c4592220bfaf2f29e"
+        },
+        {
+          "page": 6,
+          "characters": 1113,
+          "invalid_characters": 0,
+          "text_sha256": "811b35641cf877c515bac5059c74e1b4182c42a096919f5f766036841b8d214f"
+        },
+        {
+          "page": 7,
+          "characters": 105,
+          "invalid_characters": 0,
+          "text_sha256": "4702929d2da09d66c992b6ef5d6502a8bff9bd592dd7c48b19de6386d4e9d17a"
+        },
+        {
+          "page": 8,
+          "characters": 1840,
+          "invalid_characters": 0,
+          "text_sha256": "ae26908b3b9dc4d26bc6179e16844ea0cbf6290aab854ffc76fbd9b784f6f110"
+        },
+        {
+          "page": 9,
+          "characters": 2078,
+          "invalid_characters": 0,
+          "text_sha256": "312fa7292752099fc6fdbe285029dc24d00b7e09c7098091195308c03f1f2cde"
+        },
+        {
+          "page": 10,
+          "characters": 1829,
+          "invalid_characters": 0,
+          "text_sha256": "349d8cbf731b9fd9cf9bdb6cf90fc54cb7314dcc3ddf3e8bd9d62c335b7682a1"
+        }
+      ],
+      "script_check": {
+        "simplified_markers": 674,
+        "traditional_markers": 0,
+        "cjk_characters": 7746,
+        "latin_characters": 16
+      },
+      "visible_version_verified": true,
+      "provenance_anchors_verified": true,
+      "application_ready": false,
+      "download": "fetched",
+      "resolved_url": "https://resources.pingan.com/app_upload/file/paylx/P0313_20180720.pdf"
+    },
+    {
+      "id": "zh-critical-illness",
+      "status": "collected_project_parse_checked",
+      "sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "size_bytes": 322013,
+      "pages": 12,
+      "page_checks": [
+        {
+          "page": 1,
+          "characters": 910,
+          "invalid_characters": 0,
+          "text_sha256": "0bbffe919f240e8c0c415421081798ba8db188852868c24cceed1211da9ffc43"
+        },
+        {
+          "page": 2,
+          "characters": 1331,
+          "invalid_characters": 0,
+          "text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        },
+        {
+          "page": 3,
+          "characters": 1343,
+          "invalid_characters": 0,
+          "text_sha256": "fb1e287c2a4c2dc6ad1f978b282cc791970b9d264f7759e2bf1dc47f1c566c0d"
+        },
+        {
+          "page": 4,
+          "characters": 1206,
+          "invalid_characters": 0,
+          "text_sha256": "067ffbaad19aa9f30457c897d42ad75640b43637b95d0c6b33ff6bd3210454fe"
+        },
+        {
+          "page": 5,
+          "characters": 1207,
+          "invalid_characters": 0,
+          "text_sha256": "7d7ae93d8af68d8fcef88ea7dadd019bf7f6995b27f73e3352defdf3ec090196"
+        },
+        {
+          "page": 6,
+          "characters": 1196,
+          "invalid_characters": 0,
+          "text_sha256": "b7d6a973e1344aa5cdf949425e5235aa9dd417d57ccb05cb5fbb1c6ffa592a82"
+        },
+        {
+          "page": 7,
+          "characters": 1157,
+          "invalid_characters": 0,
+          "text_sha256": "1cb2a481f1018d0f38013db27182383761d687a2b0aad2bfb01754a8441bc912"
+        },
+        {
+          "page": 8,
+          "characters": 1097,
+          "invalid_characters": 0,
+          "text_sha256": "b5ae682d15b2debb4a77abf077415e14198150c7a050bcdcda8f622da1755287"
+        },
+        {
+          "page": 9,
+          "characters": 1273,
+          "invalid_characters": 0,
+          "text_sha256": "003adf08287d49f6f46cf17bc09ef39ca9195818bda1e9b2b80a36fc5ed2bce4"
+        },
+        {
+          "page": 10,
+          "characters": 1245,
+          "invalid_characters": 0,
+          "text_sha256": "4ed43119005dbfecfd74156bb0e74b096c1fe2110f3b553e7561bb87384eb2e3"
+        },
+        {
+          "page": 11,
+          "characters": 1336,
+          "invalid_characters": 0,
+          "text_sha256": "625a8447c79ce09c494700434ddd4f518bf367d994d7bab69141ffe63d792fea"
+        },
+        {
+          "page": 12,
+          "characters": 524,
+          "invalid_characters": 0,
+          "text_sha256": "55c4b21f3954603ffae3981c0fc038c922a2b89b71e769147d02936efc269438"
+        }
+      ],
+      "script_check": {
+        "simplified_markers": 717,
+        "traditional_markers": 0,
+        "cjk_characters": 11075,
+        "latin_characters": 172
+      },
+      "visible_version_verified": true,
+      "provenance_anchors_verified": true,
+      "application_ready": false,
+      "download": "fetched",
+      "resolved_url": "https://resources.pingan.com/app_upload/file/paylx/P0328_20180720.pdf"
+    },
+    {
+      "id": "zh-life",
+      "status": "collected_project_parse_checked",
+      "sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "size_bytes": 167298,
+      "pages": 5,
+      "page_checks": [
+        {
+          "page": 1,
+          "characters": 907,
+          "invalid_characters": 0,
+          "text_sha256": "8227d129ff527d506b35252a30d4c37bf2be41292d02ff641760be54fd0ded18"
+        },
+        {
+          "page": 2,
+          "characters": 1438,
+          "invalid_characters": 0,
+          "text_sha256": "1e805ae3df3317e523e67024118b6b50a0b71dc10f5a530d4da3c1d98b51d48d"
+        },
+        {
+          "page": 3,
+          "characters": 1378,
+          "invalid_characters": 0,
+          "text_sha256": "0e3257249ba462154fc0f92bd746137911dcfd2566d20bbfb2aaa27a03abf89a"
+        },
+        {
+          "page": 4,
+          "characters": 1234,
+          "invalid_characters": 0,
+          "text_sha256": "d30f9c1d08931d5edb5b86cc3db265208760510fee3d876f262ada8dd8601333"
+        },
+        {
+          "page": 5,
+          "characters": 826,
+          "invalid_characters": 0,
+          "text_sha256": "a164bf6f90e600e82500566341f507684619aea1116cbb6dc2795144853f704f"
+        }
+      ],
+      "script_check": {
+        "simplified_markers": 578,
+        "traditional_markers": 0,
+        "cjk_characters": 4926,
+        "latin_characters": 0
+      },
+      "visible_version_verified": true,
+      "provenance_anchors_verified": true,
+      "application_ready": false,
+      "download": "fetched",
+      "resolved_url": "https://resources.pingan.com/app_upload/file/paylx/P0710_20180720.pdf"
+    },
+    {
+      "id": "en-medical",
+      "status": "collected_project_parse_checked",
+      "sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "size_bytes": 291458,
+      "pages": 14,
+      "page_checks": [
+        {
+          "page": 1,
+          "characters": 589,
+          "invalid_characters": 0,
+          "text_sha256": "67a2734b7685ae3b6aec48894404bd2ab1ebad8be12e604eb9f49369979d8d52"
+        },
+        {
+          "page": 2,
+          "characters": 3260,
+          "invalid_characters": 0,
+          "text_sha256": "0633f0ece63cdeb43d1a05ce56aa5c9ef991e371adec8a77436826fdc3b632af"
+        },
+        {
+          "page": 3,
+          "characters": 4017,
+          "invalid_characters": 0,
+          "text_sha256": "cf21398f2f8b7e43ff139b1ca7716e401f35e6640a152e5ca560b057eaf8012a"
+        },
+        {
+          "page": 4,
+          "characters": 3667,
+          "invalid_characters": 0,
+          "text_sha256": "4c58aa0f1d6587dfed0a71fbe9aba54bcc07c7e17c34543fc8b5903e41b8c110"
+        },
+        {
+          "page": 5,
+          "characters": 1326,
+          "invalid_characters": 0,
+          "text_sha256": "c5268460cf5199f107736c0cdd650b712f5dae69af5a5f8d2b278f46580c7300"
+        },
+        {
+          "page": 6,
+          "characters": 2014,
+          "invalid_characters": 0,
+          "text_sha256": "ccd4e3cf637be93028a452a372e3728b5e43bc6796f7d35075cc13b865f2e241"
+        },
+        {
+          "page": 7,
+          "characters": 1970,
+          "invalid_characters": 0,
+          "text_sha256": "8969fc7fc93e1ccfe4b69118cb043d82574fa421667bb04fc8bee1c554c0d4c6"
+        },
+        {
+          "page": 8,
+          "characters": 1047,
+          "invalid_characters": 0,
+          "text_sha256": "63ca8b58b2d80ae73b2e40ebb698da6ab08d1fec408eeabc327d2f19a1d3a327"
+        },
+        {
+          "page": 9,
+          "characters": 3879,
+          "invalid_characters": 0,
+          "text_sha256": "41dea3e83b762bda8d0b7cddd3132ebe161c3ebef42d8d8f8a4e38f34a5f72e1"
+        },
+        {
+          "page": 10,
+          "characters": 3670,
+          "invalid_characters": 0,
+          "text_sha256": "df7633c52bec175895cd8f147483a59f418fb121c99c78f4d64ba17392a1732a"
+        },
+        {
+          "page": 11,
+          "characters": 3113,
+          "invalid_characters": 0,
+          "text_sha256": "b60875d48a739361bb66e9f609246ca7a9692274a364d8f19dab80754a7e44eb"
+        },
+        {
+          "page": 12,
+          "characters": 3019,
+          "invalid_characters": 0,
+          "text_sha256": "95bd0c594f87fbff581d23ddd836ecbb98ba9ed749ea6f3048009211630bd56c"
+        },
+        {
+          "page": 13,
+          "characters": 3485,
+          "invalid_characters": 0,
+          "text_sha256": "7f88a46662ca86bfc6b97ceeaf646bce6623f2898b86e681939e76f6cdcd7fbb"
+        },
+        {
+          "page": 14,
+          "characters": 2125,
+          "invalid_characters": 0,
+          "text_sha256": "cb2be90289216e48fd10ce2d305bdcc4634e281c3f816fbb17ad8f1dfaf28157"
+        }
+      ],
+      "script_check": {
+        "simplified_markers": 0,
+        "traditional_markers": 0,
+        "cjk_characters": 0,
+        "latin_characters": 28349
+      },
+      "visible_version_verified": true,
+      "provenance_anchors_verified": true,
+      "application_ready": false,
+      "download": "fetched",
+      "resolved_url": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/f471f8fd-2ee1-45b5-a6f1-da789efc4c77/GHD_Hospital%20Care_Policy%20Conditions%20%28w%20SDIC%29_202204E.pdf"
+    },
+    {
+      "id": "en-critical-illness",
+      "status": "collected_project_parse_checked",
+      "sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "size_bytes": 970253,
+      "pages": 75,
+      "page_checks": [
+        {
+          "page": 1,
+          "characters": 2413,
+          "invalid_characters": 0,
+          "text_sha256": "282b661cd00f94451bb3f963db475b0bf710bbcabdc28479a9bc2cdf3309c791"
+        },
+        {
+          "page": 2,
+          "characters": 2347,
+          "invalid_characters": 0,
+          "text_sha256": "c131af68921d846f55adf0e55317224ac206431fdc435de7f9d47bd2d5c4bd42"
+        },
+        {
+          "page": 3,
+          "characters": 2920,
+          "invalid_characters": 0,
+          "text_sha256": "513f2fe48c0b8d9caefd9d5b877d4e339933834659bc64532462d2c89c70b8fa"
+        },
+        {
+          "page": 4,
+          "characters": 2614,
+          "invalid_characters": 0,
+          "text_sha256": "d30e87f8ce55f4263f85fd1ea2c382d73db025f62cb32e9b1579bffcef9a16dd"
+        },
+        {
+          "page": 5,
+          "characters": 3485,
+          "invalid_characters": 0,
+          "text_sha256": "940c6064a87ab26dbd916dd6a7b6fcfb451e59e026096a8add3aa9dd82e70077"
+        },
+        {
+          "page": 6,
+          "characters": 2012,
+          "invalid_characters": 0,
+          "text_sha256": "bf1db76aa207cf71d6da631bfd709373f4492cac7ad6a2c949fda4be51848a5b"
+        },
+        {
+          "page": 7,
+          "characters": 2327,
+          "invalid_characters": 0,
+          "text_sha256": "659db2e0c5c4ba95cf809374755ac98c86d8ea811d8f4e1f2a24d371e3c92c1c"
+        },
+        {
+          "page": 8,
+          "characters": 2580,
+          "invalid_characters": 0,
+          "text_sha256": "9593949a0fcda878d8ce69581f7cb685ad3bb019514e710dd1ea242b3910df6b"
+        },
+        {
+          "page": 9,
+          "characters": 2008,
+          "invalid_characters": 0,
+          "text_sha256": "a6af5b49bf2b481061e3512d985b924d1cd0b9eb5f657f82dca5501edd997edf"
+        },
+        {
+          "page": 10,
+          "characters": 2509,
+          "invalid_characters": 0,
+          "text_sha256": "f5f6ec2c79753edba7252539a1b5af12e0c6e78c6109b285fd7102093e30d9f3"
+        },
+        {
+          "page": 11,
+          "characters": 2155,
+          "invalid_characters": 0,
+          "text_sha256": "110037e8194667dae140cafe245bee0cef42dc62a7f1e1d126634d48f6406716"
+        },
+        {
+          "page": 12,
+          "characters": 2067,
+          "invalid_characters": 0,
+          "text_sha256": "f04d68afae646bd676c5fe8a546c6fb8c9ec570421c42f973ff3a937cc1f2367"
+        },
+        {
+          "page": 13,
+          "characters": 2241,
+          "invalid_characters": 0,
+          "text_sha256": "37853fd27a7b5db7afbe6ea60746bd5377e2bff2bf52f44cf2d24db0109957ef"
+        },
+        {
+          "page": 14,
+          "characters": 1964,
+          "invalid_characters": 0,
+          "text_sha256": "81ce0df2e33021f1dd9474242f80aadd498249b7023a1b133389713daca82ca8"
+        },
+        {
+          "page": 15,
+          "characters": 2562,
+          "invalid_characters": 0,
+          "text_sha256": "38d22e595f37e8aad731ebc43bc5854b6643d98b605a7736d2bee94c9240e15e"
+        },
+        {
+          "page": 16,
+          "characters": 3034,
+          "invalid_characters": 0,
+          "text_sha256": "9c46fa874db07791f4004bfbfdac8b7b75ce3e3be813eea4e8c50d058f7e5f4a"
+        },
+        {
+          "page": 17,
+          "characters": 2201,
+          "invalid_characters": 0,
+          "text_sha256": "e2ebae24a40e7299312bdee6057bbe99d6f0f8733ebfafe3eafc5190ca3ebf02"
+        },
+        {
+          "page": 18,
+          "characters": 3013,
+          "invalid_characters": 0,
+          "text_sha256": "9b388f8d17090ec6b65eda4b2f193f2cea7deb0b587d1f5a773955d6e8a8f464"
+        },
+        {
+          "page": 19,
+          "characters": 2915,
+          "invalid_characters": 0,
+          "text_sha256": "c877f8082fc154e1883df6bcd7fbe3e250382a675338236f5d901af7c44b45dc"
+        },
+        {
+          "page": 20,
+          "characters": 2431,
+          "invalid_characters": 0,
+          "text_sha256": "0d54535d56dfc5a498177d4f66f8a39c523eb7139c3fec78f0da9de4ecde8344"
+        },
+        {
+          "page": 21,
+          "characters": 3501,
+          "invalid_characters": 0,
+          "text_sha256": "43c9e027792f54bae18de31b2f34623ead83ef4eec7cb6fd692e830bc61bdfa9"
+        },
+        {
+          "page": 22,
+          "characters": 3423,
+          "invalid_characters": 0,
+          "text_sha256": "3fe838db3b8933a26b05e77bf7132eff355dc4fd0e9032a6e2d67987bb5e7155"
+        },
+        {
+          "page": 23,
+          "characters": 1354,
+          "invalid_characters": 0,
+          "text_sha256": "f477b8b914edb0fe9fbdf62d21dea507505ad6ba1e87730fb1a96123fd08d856"
+        },
+        {
+          "page": 24,
+          "characters": 2263,
+          "invalid_characters": 0,
+          "text_sha256": "a2641e5e9e0ca3e62deb48e8bc67856a405fc4989cea7eac0e289b9389c789e5"
+        },
+        {
+          "page": 25,
+          "characters": 2243,
+          "invalid_characters": 0,
+          "text_sha256": "64ace8bc3dc1239891b64a6c57b450dbf391ce5b5c8f501e8d21bde22b477260"
+        },
+        {
+          "page": 26,
+          "characters": 2149,
+          "invalid_characters": 0,
+          "text_sha256": "33eab212a6e0a445bebbe27a61009247dcfc5921a3e1c96d3cd82224e9c45612"
+        },
+        {
+          "page": 27,
+          "characters": 2582,
+          "invalid_characters": 0,
+          "text_sha256": "cae1f5cd68db2314effdb748fc54904672757bb1b59a6892a88db165d7310ccb"
+        },
+        {
+          "page": 28,
+          "characters": 2499,
+          "invalid_characters": 0,
+          "text_sha256": "19c3b992bb0d49ebe5e100377cc08eaa97fc44f9997c72c176adc98c32255e87"
+        },
+        {
+          "page": 29,
+          "characters": 1470,
+          "invalid_characters": 0,
+          "text_sha256": "f3f412e4d621f632d9e69ac9b0ee3ec87bb40d7655bef1a5382cc701b83a8540"
+        },
+        {
+          "page": 30,
+          "characters": 2438,
+          "invalid_characters": 0,
+          "text_sha256": "9894cff6dfe3d44fe5d7f997f2b424b0aacd62531ebbcd0474d2c081982701c9"
+        },
+        {
+          "page": 31,
+          "characters": 2710,
+          "invalid_characters": 0,
+          "text_sha256": "0bef3d3c688ed4cfeb8d35836d1333078743100ca82f01a0dfed8251aeda36a9"
+        },
+        {
+          "page": 32,
+          "characters": 2166,
+          "invalid_characters": 0,
+          "text_sha256": "93e1608deab924b99669a2485f2087fc1e6d56ab67b0c242d23cc15bd43087f8"
+        },
+        {
+          "page": 33,
+          "characters": 2689,
+          "invalid_characters": 0,
+          "text_sha256": "99848905920dfc819321a6035594f4eecdd2ec27fdb42d8865389438e651eb03"
+        },
+        {
+          "page": 34,
+          "characters": 2487,
+          "invalid_characters": 0,
+          "text_sha256": "686baa53689cfcdb3a1d8418a3a0bc6036722bd2d4ae7cf764cc70dfb5203cbe"
+        },
+        {
+          "page": 35,
+          "characters": 3142,
+          "invalid_characters": 0,
+          "text_sha256": "47ec8cbd2d19f056f6d89a095c648bbde9282df30f76d3252806ce38e7ede5a8"
+        },
+        {
+          "page": 36,
+          "characters": 1982,
+          "invalid_characters": 0,
+          "text_sha256": "8974426c609c4d415609ee7278fb7a15fe6ab8630282b9c269f4bed32517e746"
+        },
+        {
+          "page": 37,
+          "characters": 2815,
+          "invalid_characters": 0,
+          "text_sha256": "c04df1daa6f1287e5cfdda24e662f5e0dd243ab5537a65f164c149c74e060b93"
+        },
+        {
+          "page": 38,
+          "characters": 2927,
+          "invalid_characters": 0,
+          "text_sha256": "094fc956bae769270bf94b35a2a54c3672312f8c0ac733751b288024232673c4"
+        },
+        {
+          "page": 39,
+          "characters": 2345,
+          "invalid_characters": 0,
+          "text_sha256": "dc754339cfa2f8dc454b3ec630960f0ce993e3f616db1864574045ba19ff1163"
+        },
+        {
+          "page": 40,
+          "characters": 2677,
+          "invalid_characters": 0,
+          "text_sha256": "ca1e8d1c3d36a6fad5e9c2b6d9c6ce4fac72b26dac03de774653603206496fd0"
+        },
+        {
+          "page": 41,
+          "characters": 2597,
+          "invalid_characters": 0,
+          "text_sha256": "b957a8a3b970763bab83380b6a6ca04b270ccd6e0c26cf82cfe52b87b6c19d96"
+        },
+        {
+          "page": 42,
+          "characters": 3031,
+          "invalid_characters": 0,
+          "text_sha256": "4ed6451f4534c74565ef69a7ccd6a959f0f14e199e3687dfa1b544f3b66a3cac"
+        },
+        {
+          "page": 43,
+          "characters": 1918,
+          "invalid_characters": 0,
+          "text_sha256": "0bcd927ae6713c45549a136309da418d53800f16783cdf7779f81099585d7fc8"
+        },
+        {
+          "page": 44,
+          "characters": 1960,
+          "invalid_characters": 0,
+          "text_sha256": "ba08b3edc4625f3f356b96119f59da9245f966f07b80ac7d95e60862a2e112f0"
+        },
+        {
+          "page": 45,
+          "characters": 1565,
+          "invalid_characters": 0,
+          "text_sha256": "a3b2878d195c3ab87d0a230e4d34cad7c5c06d9409b6e41153cd32fcaa88c37a"
+        },
+        {
+          "page": 46,
+          "characters": 1227,
+          "invalid_characters": 0,
+          "text_sha256": "1e4971de2da4e1b06135a0b82e6b5292f02b06d956d67915ccff8205756dd561"
+        },
+        {
+          "page": 47,
+          "characters": 1851,
+          "invalid_characters": 0,
+          "text_sha256": "46c15e79b450a166fa7847ee16e096b141e10a6203c8e1e43df365cc4c5e9720"
+        },
+        {
+          "page": 48,
+          "characters": 1267,
+          "invalid_characters": 0,
+          "text_sha256": "d2a32bbf54063ddf188f2607b23f3ba25d43b68f4acc2d468a548c58d0fc0191"
+        },
+        {
+          "page": 49,
+          "characters": 1702,
+          "invalid_characters": 0,
+          "text_sha256": "b386997c7e6cc762cbf7ab947e0ec11d1baf06b74514a7e1dd420c1df2fb1486"
+        },
+        {
+          "page": 50,
+          "characters": 1446,
+          "invalid_characters": 0,
+          "text_sha256": "a898fd394d46906024cf2eee3cf11118c1ca328b986e753c4aaac1bfefc94b1c"
+        },
+        {
+          "page": 51,
+          "characters": 1424,
+          "invalid_characters": 0,
+          "text_sha256": "ae55bc53a52cb30858fa03e635f2acb8e126aee03c657dbd9dced8194c4ca4a0"
+        },
+        {
+          "page": 52,
+          "characters": 1321,
+          "invalid_characters": 0,
+          "text_sha256": "88d38a2ab69cd4e82b985fe29a35842909121f50a27d7483e01dfec5f24f631e"
+        },
+        {
+          "page": 53,
+          "characters": 1865,
+          "invalid_characters": 0,
+          "text_sha256": "f01612990803dde979d281fed6dca7a45c19e036eebebc1176af1e41c3caa56f"
+        },
+        {
+          "page": 54,
+          "characters": 1153,
+          "invalid_characters": 0,
+          "text_sha256": "8d2dabee27f807a336a6fbf1fe35addc7c694028c7a95094e22da4229bf6a3a6"
+        },
+        {
+          "page": 55,
+          "characters": 1272,
+          "invalid_characters": 0,
+          "text_sha256": "d1a09e18e43c87350eb2a8cf87e6a7b44750e3a057e8f0b71625cfac3c95c236"
+        },
+        {
+          "page": 56,
+          "characters": 1909,
+          "invalid_characters": 0,
+          "text_sha256": "e455462df793fff05d8b84d5391bc04a3bdf97cf1f96ea65c2e476109b8fe81d"
+        },
+        {
+          "page": 57,
+          "characters": 1410,
+          "invalid_characters": 0,
+          "text_sha256": "7e78da810be465737453553f5aa9a7babac418215e67bfd017d0e2cf8d3d4448"
+        },
+        {
+          "page": 58,
+          "characters": 1303,
+          "invalid_characters": 0,
+          "text_sha256": "ffd445928dce95154afbb2af1716f044de1459739ce25ff6459f82b99da50cac"
+        },
+        {
+          "page": 59,
+          "characters": 1174,
+          "invalid_characters": 0,
+          "text_sha256": "bc53e9c40c1f8b2e28e3cb3b85b166cf8dd081c2c98fd5b53a597d87514ed411"
+        },
+        {
+          "page": 60,
+          "characters": 1350,
+          "invalid_characters": 0,
+          "text_sha256": "4dc6a8381dc6c6f921be22bf83c2f194eeca3b2aa7fc1a1243e6c4ef7099add5"
+        },
+        {
+          "page": 61,
+          "characters": 1092,
+          "invalid_characters": 0,
+          "text_sha256": "608b524cdb526f03cc1bb04801f2210c253ae90cb3d6ba3a291c148319aba02e"
+        },
+        {
+          "page": 62,
+          "characters": 1905,
+          "invalid_characters": 0,
+          "text_sha256": "346ed3f746ea0a3b096135c6611233d9877a1ca7916209a87e4ddeeaa781bb1b"
+        },
+        {
+          "page": 63,
+          "characters": 2867,
+          "invalid_characters": 0,
+          "text_sha256": "c8cb4b568d3369e1d6b3e4d347c59d73647e5ca6caaaf4268377286aeb2106b0"
+        },
+        {
+          "page": 64,
+          "characters": 2355,
+          "invalid_characters": 0,
+          "text_sha256": "31880fa0132ed52707a1a8154094bc37cbece9e9fb75bbc3efe216eeaf24fbaf"
+        },
+        {
+          "page": 65,
+          "characters": 2581,
+          "invalid_characters": 0,
+          "text_sha256": "fb77ab1428da8c525c45fda547bb40defe5bf1bd4efc2966d82282f6da3ce996"
+        },
+        {
+          "page": 66,
+          "characters": 2315,
+          "invalid_characters": 0,
+          "text_sha256": "bd5bb356aee7417e7a535f1a31932ec122da03a4775b0894a7e6a915ca042a19"
+        },
+        {
+          "page": 67,
+          "characters": 2677,
+          "invalid_characters": 0,
+          "text_sha256": "31d9b8a499b53e61161134af629823833da5769a2fe980fd87b93ccca28d3f5d"
+        },
+        {
+          "page": 68,
+          "characters": 2677,
+          "invalid_characters": 0,
+          "text_sha256": "d262af6a02df21e826aa1992178ded3b5d856175e315668f17d93e734c4b498b"
+        },
+        {
+          "page": 69,
+          "characters": 2529,
+          "invalid_characters": 0,
+          "text_sha256": "80ea93c3c863d16209e777c3da81351cc972fb754cc4128eb8e35ae6471d78df"
+        },
+        {
+          "page": 70,
+          "characters": 1066,
+          "invalid_characters": 0,
+          "text_sha256": "aa9ce8c895661234d82456dec50dbd67aed91d5582b60ce7c7a2e01732ad7c21"
+        },
+        {
+          "page": 71,
+          "characters": 2822,
+          "invalid_characters": 0,
+          "text_sha256": "2055cbffa4a37bcbfd17ef877ec6c4a9f62dd6f1ab287b0cc038f57f1ef8826d"
+        },
+        {
+          "page": 72,
+          "characters": 2938,
+          "invalid_characters": 0,
+          "text_sha256": "ac936ddf4986ae8466fad30e7ccff3e4f0eee9f52b1b4560972694f0e2a06940"
+        },
+        {
+          "page": 73,
+          "characters": 2954,
+          "invalid_characters": 0,
+          "text_sha256": "0b49eebe32cea6daf0f4b28d2b27090a3f42c242c3bdd1a5d99e00a72b2098cb"
+        },
+        {
+          "page": 74,
+          "characters": 2461,
+          "invalid_characters": 0,
+          "text_sha256": "fc72bc0afa8366a7b306a746fdf7eaf51aedb1b7b8dab886385250d4666db078"
+        },
+        {
+          "page": 75,
+          "characters": 1118,
+          "invalid_characters": 0,
+          "text_sha256": "e827ba9caa9bba3e1ab4397ce07a852cd10ea35fac9fc72dbb8f6b73e08db87b"
+        }
+      ],
+      "script_check": {
+        "simplified_markers": 0,
+        "traditional_markers": 0,
+        "cjk_characters": 0,
+        "latin_characters": 128757
+      },
+      "visible_version_verified": true,
+      "provenance_anchors_verified": true,
+      "application_ready": false,
+      "download": "fetched",
+      "resolved_url": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/05effb9c-3c54-4081-a63c-bcd6461563b4/_Final_%20Contract%20-%20Complete%20Critical%20Protect.pdf"
+    },
+    {
+      "id": "en-life",
+      "status": "collected_project_parse_checked",
+      "sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "size_bytes": 254249,
+      "pages": 4,
+      "page_checks": [
+        {
+          "page": 1,
+          "characters": 2534,
+          "invalid_characters": 0,
+          "text_sha256": "3cc43121c7baf3c4f09306f6607c8e1b22e5ea3cc3be2dbb22235bc268c7c2bf"
+        },
+        {
+          "page": 2,
+          "characters": 2933,
+          "invalid_characters": 0,
+          "text_sha256": "3a2ae80e3cce19093fb4a829c1c80624c89491c3ff66c9b72b5d6605c041d5ea"
+        },
+        {
+          "page": 3,
+          "characters": 2847,
+          "invalid_characters": 0,
+          "text_sha256": "e45e7c730c655dc23182b45ebd48bf2d5e59f8845cca9ec7540e5d15057695f1"
+        },
+        {
+          "page": 4,
+          "characters": 1934,
+          "invalid_characters": 0,
+          "text_sha256": "7c815b97ac401ae613f30e77801effdfd4ec2dd648123f8bef72de38d7c29217"
+        }
+      ],
+      "script_check": {
+        "simplified_markers": 0,
+        "traditional_markers": 0,
+        "cjk_characters": 0,
+        "latin_characters": 7687
+      },
+      "visible_version_verified": true,
+      "provenance_anchors_verified": true,
+      "application_ready": false,
+      "download": "fetched",
+      "resolved_url": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/b55aca90-94cc-4ce7-8db8-33f863410e11/Policy%20Contract%20-%20DIRECT%20Star%20Term%20%28non-renewable%29%20%28TAN18%29.pdf"
+    }
+  ]
+}

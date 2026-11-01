@@ -172,7 +172,7 @@ class QueryService:
         return refusal_policy.is_advice_or_guarantee_question(question)
 
     def _has_llm_credentials(self) -> bool:
-        return bool((settings.OPENAI_API_KEY or settings.SILICONFLOW_API_KEY or "").strip())
+        return settings.generation_configured
 
     def _is_off_topic(self, question: str, chunks: List[Dict[str, Any]]) -> bool:
         return refusal_policy.is_off_topic(question, chunks)
@@ -189,8 +189,8 @@ class QueryService:
 
         # 统一：准备 Agent、LLM（轻量/核心）与可选查询重写
         agent = self.agent
-        llm_core = LLMService.with_model(settings.OPENAI_MODEL_CORE)
-        llm_light = LLMService.with_model(settings.OPENAI_MODEL_LIGHT)
+        llm_core = LLMService.with_model(settings.generation_model())
+        llm_light = LLMService.with_model(settings.generation_model("light"))
         rewriter = QueryRewriterService(llm_service=llm_light)
         simple_mode = bool(getattr(settings, "SIMPLE_RAG_MODE", True))
 
@@ -369,6 +369,8 @@ class QueryService:
                         pass
                     return fallback
                 retrieved_chunks = ctx.get("retrieved_chunks", []) or []
+                retrieved_chunks = citation_policy.eligible_evidence(
+                    retrieved_chunks, float(settings.SIMILARITY_THRESHOLD))
                 retrieved_chunks = self.curate_citations(
                     retrieved_chunks,
                     getattr(request, "question", "") or "",
@@ -593,7 +595,7 @@ class QueryService:
                     response_time=response_time,
                     chunks_used=len(ui_chunks),
                     retrieved_chunks=self._to_retrieved_chunks(ui_chunks) if ui_chunks else [],
-                    confidence_score=0.9,
+                    confidence_score=round(best_sim, 4),
                     query_id=None,
                     answer_kind="answer",
                     embedding_provider=getattr(getattr(self, "embedding_service", None), "provider", None),
@@ -781,6 +783,8 @@ class QueryService:
                 # 异步构建上下文
                 ctx = await agent.abuild_context(question_for_retrieval)
                 retrieved_chunks = ctx.get("retrieved_chunks", []) or []
+                retrieved_chunks = citation_policy.eligible_evidence(
+                    retrieved_chunks, float(settings.SIMILARITY_THRESHOLD))
                 retrieved_chunks = self.curate_citations(
                     retrieved_chunks,
                     getattr(request, "question", "") or "",
@@ -939,6 +943,7 @@ class QueryService:
                     "success": True,
                     "retrieved_chunks": chunk_payload,
                     "chunks_used": len(chunk_payload),
+                    "confidence_score": round(best_sim, 4),
                     "answer_kind": _kind,
                     "embedding_provider": getattr(getattr(self, "embedding_service", None), "provider", None),
                 }

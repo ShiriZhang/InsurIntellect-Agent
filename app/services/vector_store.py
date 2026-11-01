@@ -6,7 +6,6 @@
 from typing import List, Dict, Any, Optional, Tuple
 import asyncio
 import numpy as np
-from openai import AsyncOpenAI
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +19,7 @@ from app.core.app_logging import get_logger
 from app.models.schemas import RetrievedChunk
 from app.models.database_models import DocumentChunk
 from app.services.embedding_service import EmbeddingService
+from app.services.evidence_scores import cosine_distance_to_score, normalize_evidence_score
 
 logger = get_logger(__name__)
 
@@ -30,17 +30,8 @@ class VectorStoreService:
     def __init__(self):
         self.client = None
         self.collection = None
-        # 统一读取嵌入模型配置：优先使用 OPENAI_EMBEDDING_MODEL，其次兼容 EMBEDDING_MODEL
-        self.embedding_model = (settings.OPENAI_EMBEDDING_MODEL or settings.EMBEDDING_MODEL)
-
-        # 初始化OpenAI客户端
-        self.openai_client = AsyncOpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            base_url=settings.OPENAI_BASE_URL
-        )
-        # 初始化嵌入服务（双模式，I1.3）
-        # 根据前缀 hf:/local: 加载 HuggingFaceEmbeddings，否则加载 OpenAIEmbeddings
-        self.embedding_service = EmbeddingService(model_name=self.embedding_model)
+        self.embedding_service = EmbeddingService()
+        self.embedding_model = self.embedding_service.model_name
     
     async def initialize(self):
         """初始化向量数据库"""
@@ -222,7 +213,10 @@ class VectorStoreService:
                 'id': results['ids'][0][i],
                 'content': results['documents'][0][i],
                 'metadata': results['metadatas'][0][i],
-                'similarity_score': 1 - results['distances'][0][i]  # 转换距离为相似度
+                'raw_distance': results['distances'][0][i],
+                'score_metric': 'cosine',
+                'evidence_score': cosine_distance_to_score(results['distances'][0][i]),
+                'similarity_score': cosine_distance_to_score(results['distances'][0][i])
             }
             search_results.append(result)
         
@@ -241,7 +235,9 @@ class VectorStoreService:
             result = {
                 'id': match['id'],
                 'metadata': match['metadata'],
-                'similarity_score': match['score']
+                'score_metric': 'cosine',
+                'evidence_score': normalize_evidence_score(match['score']),
+                'similarity_score': normalize_evidence_score(match['score'])
             }
             search_results.append(result)
         

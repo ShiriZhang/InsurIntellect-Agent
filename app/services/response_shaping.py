@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.models.schemas import RetrievedChunk
+from app.services.evidence_scores import chunk_evidence_score
 
 
 def _coerce_id(value: Any) -> Any:
@@ -32,34 +33,11 @@ def _coerce_page(value: Any) -> Optional[int]:
     return None
 
 
-def _normalize_similarity(value: Any) -> Optional[float]:
-    if value is None:
-        return None
-    try:
-        score = float(value)
-    except Exception:
-        return None
-    if score < 0.0:
-        score = 0.0
-    if score > 1.0:
-        if score <= 2.0:
-            score = max(0.0, min(1.0, 1.0 - score))
-        else:
-            score = max(0.0, min(1.0, 1.0 / (1.0 + score)))
-    return score
-
-
 def to_retrieved_chunks(chunks: List[Dict[str, Any]]) -> List[RetrievedChunk]:
     """Normalize raw retrieval dicts into public RetrievedChunk models."""
     normalized: List[RetrievedChunk] = []
     for chunk in chunks or []:
         metadata = chunk.get("metadata") if isinstance(chunk.get("metadata"), dict) else {}
-        ranking_details = (
-            metadata.get("ranking_details")
-            if isinstance(metadata.get("ranking_details"), dict)
-            else {}
-        )
-
         chunk_id = _coerce_id(
             chunk.get("chunk_id") if chunk.get("chunk_id") is not None else metadata.get("chunk_id")
         )
@@ -89,18 +67,7 @@ def to_retrieved_chunks(chunks: List[Dict[str, Any]]) -> List[RetrievedChunk]:
             page_raw = metadata.get("page_number")
         page_number = _coerce_page(page_raw)
 
-        similarity = 0.0
-        candidates = [
-            chunk.get("similarity_score"),
-            metadata.get("vector_score"),
-            chunk.get("vector_score"),
-            ranking_details.get("original_similarity") if ranking_details else None,
-        ]
-        for raw_score in candidates:
-            normalized_score = _normalize_similarity(raw_score)
-            if normalized_score and normalized_score > 0.0:
-                similarity = normalized_score
-                break
+        similarity = chunk_evidence_score(chunk)
 
         public_metadata = dict(metadata) if isinstance(metadata, dict) else {}
         if chunk.get("display_name") and "display_name" not in public_metadata:

@@ -11,7 +11,6 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List
 
-import jieba
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -19,6 +18,7 @@ from rank_bm25 import BM25Plus
 
 from app.core.config import settings
 from app.services.embedding_service import EmbeddingService
+from app.services.retrieval_text import tokenize_retrieval, lexical_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -88,9 +88,10 @@ def ingest(pdf_dir: Path, persist_dir: Path, collection: str, reset: bool) -> Di
     if not all_docs:
         raise SystemExit("No extractable text chunks")
 
-    emb = EmbeddingService(model_name=settings.OPENAI_EMBEDDING_MODEL)
+    emb = EmbeddingService()
     vs = Chroma(
         collection_name=collection,
+        collection_metadata={"hnsw:space": settings.EMBEDDING_DISTANCE},
         embedding_function=emb.embedding_function,
         persist_directory=str(persist_dir),
     )
@@ -103,7 +104,7 @@ def ingest(pdf_dir: Path, persist_dir: Path, collection: str, reset: bool) -> Di
         print(f"embedded {min(i + batch, len(all_docs))}/{len(all_docs)}")
 
     # BM25
-    tokenized = [list(jieba.cut(d.page_content)) for d in all_docs]
+    tokenized = [tokenize_retrieval(d.page_content) for d in all_docs]
     bm25 = BM25Plus(tokenized)
     chunk_map = {
         d.metadata["chunk_id"]: {
@@ -115,7 +116,8 @@ def ingest(pdf_dir: Path, persist_dir: Path, collection: str, reset: bool) -> Di
     processed = Path(settings.PROCESSED_DATA_PATH)
     processed.mkdir(parents=True, exist_ok=True)
     with (processed / "bm25_index.pkl").open("wb") as f:
-        pickle.dump({"bm25": bm25, "ids": [d.metadata["chunk_id"] for d in all_docs]}, f)
+        pickle.dump({"bm25": bm25, "ids": [d.metadata["chunk_id"] for d in all_docs],
+                     "lexical_profile": lexical_profile()}, f)
     with (processed / "bm25_chunk_map.json").open("w", encoding="utf-8") as f:
         json.dump(chunk_map, f, ensure_ascii=False, indent=2)
 

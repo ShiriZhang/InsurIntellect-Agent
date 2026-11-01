@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
+from app.services.evidence_scores import chunk_evidence_score, normalize_evidence_score, finite_number
+from app.services.retrieval_text import tokenize_retrieval
 
 WEAK_META_MARKERS = (
     "文档名称：",
@@ -86,23 +88,11 @@ def doc_page_key(chunk: Dict[str, Any]) -> str:
 
 
 def relevance_bonus(question: str, chunk: Dict[str, Any]) -> float:
-    question_text = question or ""
+    question_tokens = set(tokenize_retrieval(question))
     text = chunk_text(chunk)
-    bonus = 0.0
-    for keyword in (
-        "等待期",
-        "犹豫期",
-        "责任免除",
-        "免赔额",
-        "免赔",
-        "酒驾",
-        "自杀",
-        "重大疾病",
-        "身故",
-        "理赔",
-    ):
-        if keyword in question_text and keyword in text:
-            bonus += 0.15
+    text_tokens = set(tokenize_retrieval(text))
+    # Lexical overlap can break ranking ties; it is never used by the evidence gate.
+    bonus = 0.05 * min(3, len(question_tokens & text_tokens))
     if _has_clause_marker(text):
         bonus += 0.05
     if is_weak_citation_chunk(chunk):
@@ -111,49 +101,17 @@ def relevance_bonus(question: str, chunk: Dict[str, Any]) -> float:
 
 
 def normalize_sim(score: Any) -> float:
-    try:
-        value = float(score)
-    except Exception:
-        return 0.0
-    if 0.0 <= value <= 1.0:
-        return value
-    if value > 1.0:
-        if value <= 2.0:
-            return max(0.0, min(1.0, 1.0 - value))
-        return max(0.0, min(1.0, 1.0 / (1.0 + value)))
-    return 0.0
+    return normalize_evidence_score(score)
 
 
 def chunk_gate_score(chunk: Dict[str, Any]) -> float:
-    """Score used by refusal gate: prefer cosine vector_score over RRF (~0.03)."""
-    metadata = chunk.get("metadata") if isinstance(chunk.get("metadata"), dict) else {}
-    ranking_details = (
-        metadata.get("ranking_details")
-        if isinstance(metadata.get("ranking_details"), dict)
-        else {}
-    )
-    preferred = [
-        ranking_details.get("original_similarity"),
-        metadata.get("vector_score"),
-        chunk.get("vector_score"),
-    ]
-    best = 0.0
-    for score in preferred:
-        if score is not None:
-            best = max(best, normalize_sim(score))
-    if best > 0:
-        return best
+    return chunk_evidence_score(chunk)
 
-    fallback = [
-        chunk.get("similarity_score"),
-        metadata.get("bm25_score"),
-        ranking_details.get("final_score"),
-        metadata.get("rrf_score"),
-    ]
-    for score in fallback:
-        if score is not None:
-            best = max(best, normalize_sim(score))
-    return best
+
+def eligible_evidence(chunks, threshold):
+    """Only independently supported chunks may enter generation, at any lexical rank."""
+    return [c for c in chunks or [] if chunk_gate_score(c) > 0
+            and chunk_gate_score(c) >= threshold]
 
 
 def best_similarity(chunks: List[Dict[str, Any]]) -> float:
@@ -176,7 +134,7 @@ def curate_citations(
     if not chunks:
         return []
     limit = max(1, min(int(limit or 4), 8))
-    scored: List[tuple[float, int, Dict[str, Any]]] = []
+    scored: List[tuple[float, float, int, Dict[str, Any]]] = []
     for idx, raw in enumerate(chunks):
         if not isinstance(raw, dict):
             continue
@@ -194,29 +152,22 @@ def curate_citations(
         if not chunk.get("content"):
             chunk["content"] = chunk_text(chunk)
 
-        try:
-            base = float(chunk.get("similarity_score") or 0.0)
-        except Exception:
-            base = 0.0
-        try:
-            for key in ("rrf_score", "final_score", "bm25_score", "vector_score"):
-                if metadata.get(key) is not None:
-                    base = max(base, float(metadata.get(key)))
-        except Exception:
-            pass
-
-        score = base + relevance_bonus(question, chunk)
+        rrf = finite_number(metadata.get("rrf_score"))
+        base = rrf if rrf is not None else chunk_gate_score(chunk)
+        score = base
+        # Relevance hints affect tied ranks only; they cannot alter semantic evidence.
+        bonus = relevance_bonus(question, chunk)
         if is_weak_citation_chunk(chunk):
             score -= 1.0
-        scored.append((score, idx, chunk))
+        scored.append((score, bonus, idx, chunk))
 
-    scored.sort(key=lambda item: (-item[0], item[1]))
-    strong = [item for item in scored if not is_weak_citation_chunk(item[2])]
+    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    strong = [item for item in scored if not is_weak_citation_chunk(item[3])]
     pool = strong if strong else scored
     selected: List[Dict[str, Any]] = []
     seen_pages: set[str] = set()
     seen_prefix: set[str] = set()
-    for _score, _idx, chunk in pool:
+    for _score, _bonus, _idx, chunk in pool:
         key = doc_page_key(chunk)
         text = chunk_text(chunk).strip()
         prefix = text[:48]
@@ -231,7 +182,7 @@ def curate_citations(
         if len(selected) >= limit:
             break
     if not selected:
-        selected = [item[2] for item in scored[:limit]]
+        selected = [item[3] for item in scored[:limit]]
     return selected
 
 
@@ -245,13 +196,7 @@ def public_citations(
     for chunk in chunks or []:
         if not isinstance(chunk, dict):
             continue
-        try:
-            score = float(chunk_gate_score(chunk))
-        except Exception:
-            try:
-                score = float(chunk.get("similarity_score") or 0.0)
-            except Exception:
-                score = 0.0
+        score = chunk_gate_score(chunk)
         if score <= float(min_score or 0.0):
             continue
         if is_weak_citation_chunk(chunk):

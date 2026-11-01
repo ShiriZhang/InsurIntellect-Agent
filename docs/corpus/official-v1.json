@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "corpus_id": "official-v1",
+  "documents": [
+    {
+      "id": "zh-medical",
+      "language": "zh-Hans",
+      "category": "medical",
+      "product": "平安住院安心短期医疗保险",
+      "issuer": "平安养老保险股份有限公司",
+      "jurisdiction": "中国内地",
+      "region_basis": "第19条合同争议处理及第20条医院/医师释义；地域按条款，不推断销售范围",
+      "official_landing_url": "https://resources.pingan.com/app_upload/file/paylx/P0313_20180720.pdf",
+      "source_url": "https://resources.pingan.com/app_upload/file/paylx/P0313_20180720.pdf",
+      "resolved_url_at_collection": "https://resources.pingan.com/app_upload/file/paylx/P0313_20180720.pdf",
+      "collected_at": "2026-10-25T19:05:21.065534+00:00",
+      "visible_version": {
+        "text": "平安养老〔2018〕医疗保险041 号",
+        "page": 1,
+        "basis": "PDF 正文可见条款编号/页眉；不从文件名、PDF 属性或 URL 推断发布日期"
+      },
+      "publication_date": null,
+      "pages": 10,
+      "size_bytes": 418970,
+      "sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "language_review": "逐页文字提取、脚本标记及正文检查：简体中文原文，未转换繁体文件",
+      "acquisition_status": "collected_project_parse_checked",
+      "application_ready": false,
+      "issuer_evidence": {
+        "page": 5,
+        "text": "平安养老保险股份有限公司"
+      },
+      "region_evidence": {
+        "page": 5,
+        "text": "中华人民共和国境内（港、澳、台"
+      },
+      "product_evidence": {
+        "page": 1,
+        "text": "平安住院安心短期医疗保险条款"
+      }
+    },
+    {
+      "id": "zh-critical-illness",
+      "language": "zh-Hans",
+      "category": "critical-illness",
+      "product": "平安上海医保账户重大疾病保险",
+      "issuer": "平安养老保险股份有限公司",
+      "jurisdiction": "中国内地／上海医保账户适用条件",
+      "region_basis": "第1页第三条投保对象明确要求上海市城镇职工基本医疗保险及个人历年医保账户条件",
+      "official_landing_url": "https://resources.pingan.com/app_upload/file/paylx/P0328_20180720.pdf",
+      "source_url": "https://resources.pingan.com/app_upload/file/paylx/P0328_20180720.pdf",
+      "resolved_url_at_collection": "https://resources.pingan.com/app_upload/file/paylx/P0328_20180720.pdf",
+      "collected_at": "2026-10-25T19:05:21.065588+00:00",
+      "visible_version": {
+        "text": "平安养老[2018]疾病保险097 号",
+        "page": 1,
+        "basis": "PDF 正文可见条款编号/页眉；不从文件名、PDF 属性或 URL 推断发布日期"
+      },
+      "publication_date": null,
+      "pages": 12,
+      "size_bytes": 322013,
+      "sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "language_review": "逐页文字提取、脚本标记及正文检查：简体中文原文，未转换繁体文件",
+      "acquisition_status": "collected_project_parse_checked",
+      "application_ready": false,
+      "issuer_evidence": {
+        "page": 4,
+        "text": "平安养老保险股份有限公司"
+      },
+      "region_evidence": {
+        "page": 1,
+        "text": "上海市城镇职工基本医疗保险"
+      },
+      "product_evidence": {
+        "page": 1,
+        "text": "平安上海医保账户重大疾病保险条款"
+      }
+    },
+    {
+      "id": "zh-life",
+      "language": "zh-Hans",
+      "category": "life",
+      "product": "平安团体定期寿险",
+      "issuer": "平安养老保险股份有限公司",
+      "jurisdiction": "中国内地",
+      "region_basis": "第5页团体释义要求中华人民共和国境内合法团体；团体产品，不冒充个人寿险",
+      "official_landing_url": "https://resources.pingan.com/app_upload/file/paylx/P0710_20180720.pdf",
+      "source_url": "https://resources.pingan.com/app_upload/file/paylx/P0710_20180720.pdf",
+      "resolved_url_at_collection": "https://resources.pingan.com/app_upload/file/paylx/P0710_20180720.pdf",
+      "collected_at": "2026-10-25T19:05:21.065599+00:00",
+      "visible_version": {
+        "text": "平安养老〔2018〕定期寿险010 号",
+        "page": 1,
+        "basis": "PDF 正文可见条款编号/页眉；不从文件名、PDF 属性或 URL 推断发布日期"
+      },
+      "publication_date": null,
+      "pages": 5,
+      "size_bytes": 167298,
+      "sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "language_review": "逐页文字提取、脚本标记及正文检查：简体中文原文，未转换繁体文件",
+      "acquisition_status": "collected_project_parse_checked",
+      "application_ready": false,
+      "issuer_evidence": {
+        "page": 5,
+        "text": "平安养老保险股份有限公司"
+      },
+      "region_evidence": {
+        "page": 5,
+        "text": "中华人民共和国境内具有3 名以上"
+      },
+      "product_evidence": {
+        "page": 1,
+        "text": "平安团体定期寿险条款"
+      }
+    },
+    {
+      "id": "en-medical",
+      "language": "en",
+      "category": "medical",
+      "product": "Hospital Care",
+      "issuer": "Income Insurance Limited",
+      "jurisdiction": "Singapore",
+      "region_basis": "第14页明确 Singapore law；医疗类别含住院津贴、急诊意外医疗费用等，不冒充综合医疗费用险",
+      "official_landing_url": "https://www.income.com.sg/policy-documents-and-forms",
+      "source_url": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/f471f8fd-2ee1-45b5-a6f1-da789efc4c77/GHD_Hospital%20Care_Policy%20Conditions%20%28w%20SDIC%29_202204E.pdf",
+      "resolved_url_at_collection": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/f471f8fd-2ee1-45b5-a6f1-da789efc4c77/GHD_Hospital%20Care_Policy%20Conditions%20%28w%20SDIC%29_202204E.pdf",
+      "collected_at": "2026-10-25T19:05:21.065607+00:00",
+      "visible_version": {
+        "text": "PL/Hospital Care/202204E",
+        "page": 1,
+        "basis": "PDF 正文可见条款编号/页眉；不从文件名、PDF 属性或 URL 推断发布日期"
+      },
+      "publication_date": null,
+      "pages": 14,
+      "size_bytes": 291458,
+      "sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "language_review": "逐页文字提取及正文检查：英文原文",
+      "acquisition_status": "collected_project_parse_checked",
+      "application_ready": false,
+      "issuer_evidence": {
+        "page": 4,
+        "text": "Income Insurance Limited"
+      },
+      "region_evidence": {
+        "page": 14,
+        "text": "Singapore law will apply to this policy."
+      },
+      "product_evidence": {
+        "page": 1,
+        "text": "Hospital Care"
+      }
+    },
+    {
+      "id": "en-critical-illness",
+      "language": "en",
+      "category": "critical-illness",
+      "product": "Complete Critical Protect",
+      "issuer": "Income Insurance Limited",
+      "jurisdiction": "Singapore",
+      "region_basis": "正文定义及条款中的 Singapore、S$ 与保险公司官网产品归属；不推断其他地区适用",
+      "official_landing_url": "https://www.income.com.sg/policy-documents-and-forms",
+      "source_url": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/05effb9c-3c54-4081-a63c-bcd6461563b4/_Final_%20Contract%20-%20Complete%20Critical%20Protect.pdf",
+      "resolved_url_at_collection": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/05effb9c-3c54-4081-a63c-bcd6461563b4/_Final_%20Contract%20-%20Complete%20Critical%20Protect.pdf",
+      "collected_at": "2026-10-25T19:05:21.065620+00:00",
+      "visible_version": {
+        "text": "LHO/Complete Critical Protect/CCN1.202610.1",
+        "page": 1,
+        "basis": "PDF 正文可见条款编号/页眉；不从文件名、PDF 属性或 URL 推断发布日期"
+      },
+      "publication_date": null,
+      "pages": 75,
+      "size_bytes": 970253,
+      "sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "language_review": "逐页文字提取及正文检查：英文原文",
+      "acquisition_status": "collected_project_parse_checked",
+      "application_ready": false,
+      "issuer_evidence": {
+        "page": 20,
+        "text": "Income Insurance Limited"
+      },
+      "region_evidence": {
+        "page": 20,
+        "text": "Singapore Medical Council"
+      },
+      "product_evidence": {
+        "page": 1,
+        "text": "Complete Critical Protect"
+      }
+    },
+    {
+      "id": "en-life",
+      "language": "en",
+      "category": "life",
+      "product": "DIRECT Star Term (non-renewable)",
+      "issuer": "Income Insurance Limited",
+      "jurisdiction": "Singapore",
+      "region_basis": "正文 S$、第4页 Income Insurance Limited 发行者，官网新加坡产品归属",
+      "official_landing_url": "https://www.income.com.sg/policy-documents-and-forms",
+      "source_url": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/b55aca90-94cc-4ce7-8db8-33f863410e11/Policy%20Contract%20-%20DIRECT%20Star%20Term%20%28non-renewable%29%20%28TAN18%29.pdf",
+      "resolved_url_at_collection": "https://assets-au-01.kc-usercontent.com/8acbd32f-b7e0-0294-6b7d-a2bc72d6b30c/b55aca90-94cc-4ce7-8db8-33f863410e11/Policy%20Contract%20-%20DIRECT%20Star%20Term%20%28non-renewable%29%20%28TAN18%29.pdf",
+      "collected_at": "2026-10-25T19:05:21.065628+00:00",
+      "visible_version": {
+        "text": "LHO/DIRECT Star Term (non-renewable)/TAN18.202510.1",
+        "page": 1,
+        "basis": "PDF 正文可见条款编号/页眉；不从文件名、PDF 属性或 URL 推断发布日期"
+      },
+      "publication_date": null,
+      "pages": 4,
+      "size_bytes": 254249,
+      "sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "language_review": "逐页文字提取及正文检查：英文原文",
+      "acquisition_status": "collected_project_parse_checked",
+      "application_ready": false,
+      "issuer_evidence": {
+        "page": 4,
+        "text": "Income Insurance Limited"
+      },
+      "region_evidence": {
+        "page": 3,
+        "text": "legally licensed in Singapore"
+      },
+      "product_evidence": {
+        "page": 1,
+        "text": "DIRECT Star Term (non-renewable)"
+      }
+    }
+  ],
+  "rejected_candidates": [
+    {
+      "source_url": "https://www.pingan.com/pawpdcfile/attachment/1/%E5%B9%B3%E5%AE%89%E4%B8%80%E5%B9%B4%E6%9C%9F%E9%87%8D%E5%A4%A7%E7%96%BE%E7%97%85%E4%BF%9D%E9%99%A9%E6%9D%A1%E6%AC%BE.pdf",
+      "reason": "未选用：51 页复合条款包含多个独立产品及附件，改选单一重疾条款以明确事实归属；不声称其解析失败。"
+    }
+  ]
+}

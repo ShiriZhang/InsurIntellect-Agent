@@ -48,7 +48,7 @@ extend-exclude = [
 testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = [
-  "ignore:Using .httpx. with .starlette.testclient.:starlette.exceptions.StarletteDeprecationWarning",
+  "ignore:Using .httpx. with .starlette.testclient.:DeprecationWarning",
   "ignore:invalid escape sequence:DeprecationWarning",
   "ignore:pkg_resources is deprecated:DeprecationWarning",
 ]

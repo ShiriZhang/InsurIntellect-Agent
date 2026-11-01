@@ -4,50 +4,81 @@
 """
 
 from typing import List, Dict, Any, Optional, AsyncIterator
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APITimeoutError, APIConnectionError
 import time
 import asyncio
+from urllib.parse import urlsplit
 from app.core.config import settings
 from app.core.app_logging import get_logger
 
 logger = get_logger(__name__)
 
 
+class GenerationAPIError(RuntimeError):
+    """Safe diagnosis; provider bodies and credentials are never included."""
+
+    def __init__(self, code: str, *, retryable: bool = False):
+        self.code = code
+        self.retryable = retryable
+        super().__init__(code)
+
+
+def classify_generation_error(exc):
+    if isinstance(exc, GenerationAPIError):
+        return exc
+    if isinstance(exc, (APITimeoutError, asyncio.TimeoutError)):
+        return GenerationAPIError("timeout", retryable=True)
+    if isinstance(exc, APIConnectionError):
+        return GenerationAPIError("connection", retryable=True)
+    status = getattr(exc, "status_code", None)
+    if status in {401, 403}:
+        return GenerationAPIError("credentials")
+    if status == 408:
+        return GenerationAPIError("timeout", retryable=True)
+    if status == 429:
+        body = getattr(exc, "body", None)
+        error = body.get("error", body) if isinstance(body, dict) else {}
+        code = error.get("code") or error.get("type") if isinstance(error, dict) else None
+        if code in {"insufficient_quota", "quota_exceeded", "billing_hard_limit_reached"}:
+            return GenerationAPIError("quota")
+        return GenerationAPIError("rate_limit", retryable=True)
+    if status is not None and status >= 500:
+        return GenerationAPIError("server", retryable=True)
+    if status in {400, 404, 405, 413, 422}:
+        return GenerationAPIError("configuration")
+    return GenerationAPIError("unexpected")
+
+
 class LLMService:
     """大语言模型服务：与LLM交互并生成问答"""
 
     def __init__(self, *, model_name: Optional[str] = None, max_tokens: Optional[int] = None, temperature: Optional[float] = None):
-        # 初始化 OpenAI 客户端，配置超时（重试由本类统一管理）
-        # 兼容硅基流动：允许从 OPENAI_API_KEY/SILICONFLOW_API_KEY 与 OPENAI_BASE_URL/SILICONFLOW_BASE_URL 回退
-        api_key = (settings.OPENAI_API_KEY or settings.SILICONFLOW_API_KEY or "").strip()
-        base_url = (settings.OPENAI_BASE_URL or settings.SILICONFLOW_BASE_URL or "").strip() or None
+        api_key = settings.generation_api_key
+        base_url = settings.generation_api_base_url
         self._api_key = api_key
         self._base_url = base_url
-        # Allow construction without credentials; generate paths must check first.
-        # OpenAI SDK rejects empty api_key, so defer client creation until key exists.
+        self.model = model_name if model_name is not None else settings.generation_model()
+        self.core_model_name = self.model
+        self.light_model_name = (model_name if model_name is not None
+                                 else settings.generation_model("light"))
+        self.max_tokens = max_tokens if max_tokens is not None else settings.OPENAI_MAX_TOKENS
+        self.temperature = temperature if temperature is not None else settings.OPENAI_TEMPERATURE
         self.client = None
-        if api_key:
-            self.client = AsyncOpenAI(
-                api_key=api_key,
-                base_url=base_url,
-                timeout=float(settings.OPENAI_TIMEOUT_SECS),
-                max_retries=0,
-            )
-
-        # 允许构造时覆盖模型与采样参数（用于轻量/核心分工）
-        self.model = (model_name or settings.OPENAI_MODEL)
-        self.max_tokens = (max_tokens if max_tokens is not None else settings.OPENAI_MAX_TOKENS)
-        self.temperature = (temperature if temperature is not None else settings.OPENAI_TEMPERATURE)
-
-        # 分层模型：核心（重量）与轻量模型名称
-        try:
-            self.core_model_name = getattr(settings, "OPENAI_MODEL_CORE", None) or self.model
-        except Exception:
-            self.core_model_name = self.model
-        try:
-            self.light_model_name = getattr(settings, "OPENAI_MODEL_LIGHT", None) or self.model
-        except Exception:
-            self.light_model_name = self.model
+        self._client_configuration_error = False
+        if api_key and base_url and self.model:
+            try:
+                parsed = urlsplit(base_url)
+                if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                    raise ValueError("Invalid generation API URL")
+                _ = parsed.port  # Validate an explicitly supplied port before making requests.
+                self.client = AsyncOpenAI(
+                    api_key=api_key,
+                    base_url=base_url,
+                    timeout=float(settings.OPENAI_TIMEOUT_SECS),
+                    max_retries=0,
+                )
+            except Exception:
+                self._client_configuration_error = True
 
         # 并发限制（全局 Semaphore，跨实例共享，确保总并发受控）
         if not hasattr(LLMService, "_global_semaphore") or LLMService._global_semaphore is None:
@@ -60,7 +91,7 @@ class LLMService:
             LLMService._circuit_opened_at = None
 
     def has_credentials(self) -> bool:
-        return bool((getattr(self, "_api_key", None) or "").strip()) and self.client is not None
+        return self.client is not None
 
     @classmethod
     def with_model(cls, model_name: str, *, max_tokens: Optional[int] = None, temperature: Optional[float] = None) -> "LLMService":
@@ -100,80 +131,92 @@ class LLMService:
         delay = base * (factor ** attempt_index)
         return min(delay, max_v)
 
-    async def _chat_completion(self, messages: List[Dict[str, Any]], **kwargs) -> Any:
-        """统一封装：并发限制 + 熔断 + 退避重试。"""
+    async def _request(self, messages, *, model=None, stream=False, **kwargs):
+        if not self.has_credentials():
+            raise GenerationAPIError("configuration" if self._client_configuration_error else "not_configured")
         if self._is_circuit_open():
-            raise RuntimeError("LLM 熔断中，请稍后重试")
-
-        # 并发控制：等待不超过回答超时阈值，避免请求在队列中耗尽客户端超时
+            raise GenerationAPIError("circuit_open")
         try:
-            await asyncio.wait_for(self.semaphore.acquire(), timeout=getattr(settings, "LLM_QUEUE_TIMEOUT_SECS", 0.75))
+            await asyncio.wait_for(self.semaphore.acquire(), timeout=settings.LLM_QUEUE_TIMEOUT_SECS)
         except asyncio.TimeoutError:
-            raise TimeoutError("LLM 并发队列等待超时")
+            raise GenerationAPIError("queue_timeout") from None
         try:
-            last_err: Optional[Exception] = None
-            max_attempts = max(1, settings.LLM_MAX_RETRIES)
-            for attempt in range(max_attempts):
+            attempts = min(10, max(1, settings.LLM_MAX_RETRIES))
+            for attempt in range(attempts):
+                failure = None
                 try:
-                    resp = await self.client.chat.completions.create(
-                        model=self.model,
-                        messages=messages,
-                        **kwargs,
-                    )
+                    response = await self.client.chat.completions.create(
+                        model=model or self.model, messages=messages, stream=stream, **kwargs)
+                    if stream:
+                        if not hasattr(response, "__aiter__"):
+                            raise GenerationAPIError("invalid_response")
+                    else:
+                        choices = getattr(response, "choices", None)
+                        content = (getattr(getattr(choices[0], "message", None), "content", None)
+                                   if isinstance(choices, (list, tuple)) and choices else None)
+                        if not isinstance(content, str) or not content.strip():
+                            raise GenerationAPIError("invalid_response")
                     self._record_success()
-                    return resp
-                except Exception as e:
-                    last_err = e
+                    return response
+                except Exception as exc:
+                    failure = classify_generation_error(exc)
+                # Only transient failures retry, and no provider body escapes the boundary.
+                if failure.retryable:
                     self._record_failure()
-                    # 最后一次失败直接抛出
-                    if attempt >= max_attempts - 1:
-                        break
-                    delay = self._backoff_seconds(attempt)
-                    logger.warning(f"LLM 调用失败（第 {attempt+1} 次），退避 {delay:.2f}s：{e}")
-                    await asyncio.sleep(delay)
-            # 如果失败并且达到阈值，可能开启熔断
-            if last_err is not None:
-                raise last_err
+                if not failure.retryable or attempt + 1 == attempts:
+                    raise failure from None
+                delay = self._backoff_seconds(attempt)
+                logger.warning("Generation API %s; retry %d/%d in %.2fs",
+                               failure.code, attempt + 1, attempts, delay)
+                await asyncio.sleep(delay)
         finally:
             self.semaphore.release()
 
-    async def _chat_completion_stream(self, messages: List[Dict[str, Any]], **kwargs) -> Any:
-        """流式封装：并发限制 + 熔断 + 退避重试。
+    async def _chat_completion(self, messages, **kwargs):
+        stream = kwargs.pop("stream", False)
+        return await self._request(messages, stream=stream, **kwargs)
 
-        返回异步流对象（Async Stream），调用方可 async for 进行增量消费。
-        """
-        if self._is_circuit_open():
-            raise RuntimeError("LLM 熔断中，请稍后重试")
+    async def _chat_completion_stream(self, messages, **kwargs):
+        return await self._request(messages, stream=True, **kwargs)
 
+    async def _stream_events(self, stream):
+        failure = None
+        has_text = False
         try:
-            await asyncio.wait_for(self.semaphore.acquire(), timeout=getattr(settings, "LLM_QUEUE_TIMEOUT_SECS", 0.75))
-        except asyncio.TimeoutError:
-            raise TimeoutError("LLM 并发队列等待超时(流式)")
-        try:
-            last_err: Optional[Exception] = None
-            max_attempts = max(1, settings.LLM_MAX_RETRIES)
-            for attempt in range(max_attempts):
-                try:
-                    stream = await self.client.chat.completions.create(
-                        model=self.model,
-                        messages=messages,
-                        stream=True,
-                        **kwargs,
-                    )
-                    self._record_success()
-                    return stream
-                except Exception as e:
-                    last_err = e
-                    self._record_failure()
-                    if attempt >= max_attempts - 1:
-                        break
-                    delay = self._backoff_seconds(attempt)
-                    logger.warning(f"LLM 流式调用失败（第 {attempt+1} 次），退避 {delay:.2f}s：{e}")
-                    await asyncio.sleep(delay)
-            if last_err is not None:
-                raise last_err
+            async for event in stream:
+                choices = getattr(event, "choices", None)
+                if choices is not None and not isinstance(choices, (list, tuple)):
+                    raise GenerationAPIError("invalid_response")
+                if choices:
+                    delta = getattr(choices[0], "delta", None)
+                    content = getattr(delta, "content", None)
+                    if content is not None and not isinstance(content, str):
+                        raise GenerationAPIError("invalid_response")
+                    if isinstance(content, str) and content.strip():
+                        has_text = True
+                yield event
+        except Exception as exc:
+            failure = classify_generation_error(exc)
         finally:
-            self.semaphore.release()
+            close = getattr(stream, "close", None)
+            if close is not None:
+                try:
+                    await close()
+                except Exception:
+                    logger.warning("Generation stream close failed")
+        if failure:
+            raise failure from None  # Never replay an already partially emitted answer.
+        if not has_text:
+            raise GenerationAPIError("invalid_response")
+
+    async def preflight(self):
+        try:
+            await self._request([{"role": "user", "content": "Reply with OK."}],
+                                max_tokens=8, temperature=0)
+            return {"status": "available", "model": self.model}
+        except GenerationAPIError as exc:
+            return {"status": "unavailable", "code": exc.code, "retryable": exc.retryable,
+                    "model": self.model}
 
     def _build_system_prompt(self) -> str:
         """构建系统提示词：条款证据问答，非保险顾问。"""
@@ -212,45 +255,15 @@ class LLMService:
         start_time = time.time()
 
         try:
-            if self._is_circuit_open():
-                raise RuntimeError("LLM 熔断中，请稍后重试")
-
             messages = [
                 {"role": "system", "content": self._build_system_prompt()},
                 {"role": "user", "content": self._build_user_prompt(query, context_chunks)},
             ]
 
-            try:
-                await asyncio.wait_for(self.semaphore.acquire(), timeout=getattr(settings, "LLM_QUEUE_TIMEOUT_SECS", 0.75))
-            except asyncio.TimeoutError:
-                raise TimeoutError("LLM 并发队列等待超时")
-            try:
-                last_err: Optional[Exception] = None
-                max_attempts = max(1, settings.LLM_MAX_RETRIES)
-                response = None
-                for attempt in range(max_attempts):
-                    try:
-                        response = await self.client.chat.completions.create(
-                            model=self.core_model_name,
-                            messages=messages,
-                            max_tokens=(max_tokens or self.max_tokens),
-                            temperature=(temperature if temperature is not None else self.temperature),
-                            stream=False,
-                        )
-                        self._record_success()
-                        break
-                    except Exception as e:
-                        last_err = e
-                        self._record_failure()
-                        if attempt >= max_attempts - 1:
-                            break
-                        delay = self._backoff_seconds(attempt)
-                        logger.warning(f"LLM 调用失败（第 {attempt+1} 次），退避 {delay:.2f}s：{e}")
-                        await asyncio.sleep(delay)
-                if response is None and last_err is not None:
-                    raise last_err
-            finally:
-                self.semaphore.release()
+            response = await self._request(
+                messages, model=self.core_model_name,
+                max_tokens=(max_tokens or self.max_tokens),
+                temperature=(temperature if temperature is not None else self.temperature))
 
             answer = response.choices[0].message.content.strip()
             tokens_used = getattr(response.usage, "total_tokens", 0)
@@ -266,60 +279,29 @@ class LLMService:
 
         except Exception as e:
             response_time = time.time() - start_time
-            logger.error(f"LLM回复生成失败: {e}")
+            logger.error(f"LLM回复生成失败: {type(e).__name__}")
             return {
                 "answer": "抱歉, 生成回复时出现错误, 请稍后重试。",
                 "model_used": self.core_model_name,
                 "tokens_used": 0,
                 "response_time": response_time,
                 "success": False,
-                "error": str(e),
+                "error": classify_generation_error(e).code,
             }
 
     async def agenerate_stream(self, query: str, context_chunks: List[Dict[str, Any]], *, max_tokens: Optional[int] = None, temperature: Optional[float] = None) -> AsyncIterator[str]:
         """流式：异步生成器，逐个 yield 文本增量（满足 T2.5/T2.6）。"""
-        if self._is_circuit_open():
-            # 将熔断暴露给上层，便于 SSE 报错
-            raise RuntimeError("LLM 熔断中，请稍后重试")
-
         messages = [
             {"role": "system", "content": self._build_system_prompt()},
             {"role": "user", "content": self._build_user_prompt(query, context_chunks)},
         ]
 
-        try:
-            await asyncio.wait_for(self.semaphore.acquire(), timeout=getattr(settings, "LLM_QUEUE_TIMEOUT_SECS", 0.75))
-        except asyncio.TimeoutError:
-            raise TimeoutError("LLM 并发队列等待超时(流式)")
-        try:
-            last_err: Optional[Exception] = None
-            max_attempts = max(1, settings.LLM_MAX_RETRIES)
-            stream = None
-            for attempt in range(max_attempts):
-                try:
-                    stream = await self.client.chat.completions.create(
-                        model=self.core_model_name,
-                        messages=messages,
-                        stream=True,
-                        max_tokens=(max_tokens or self.max_tokens),
-                        temperature=(temperature if temperature is not None else self.temperature),
-                    )
-                    self._record_success()
-                    break
-                except Exception as e:
-                    last_err = e
-                    self._record_failure()
-                    if attempt >= max_attempts - 1:
-                        break
-                    delay = self._backoff_seconds(attempt)
-                    logger.warning(f"LLM 流式调用失败（第 {attempt+1} 次），退避 {delay:.2f}s：{e}")
-                    await asyncio.sleep(delay)
-            if stream is None and last_err is not None:
-                raise last_err
-        finally:
-            self.semaphore.release()
+        stream = await self._request(
+            messages, model=self.core_model_name, stream=True,
+            max_tokens=(max_tokens or self.max_tokens),
+            temperature=(temperature if temperature is not None else self.temperature))
 
-        async for event in stream:
+        async for event in self._stream_events(stream):
             try:
                 if hasattr(event, "choices") and event.choices:
                     delta = event.choices[0].delta
@@ -341,39 +323,8 @@ class LLMService:
         轻量任务：路由/意图/重写 等结构化决策调用，强制使用 light 模型。
         返回 OpenAI ChatCompletion 响应对象，由调用方自行解析 JSON。
         """
-        if self._is_circuit_open():
-            raise RuntimeError("LLM 熔断中，请稍后重试")
-
-        try:
-            await asyncio.wait_for(self.semaphore.acquire(), timeout=getattr(settings, "LLM_QUEUE_TIMEOUT_SECS", 0.75))
-        except asyncio.TimeoutError:
-            raise TimeoutError("LLM 并发队列等待超时")
-
-        try:
-            last_err: Optional[Exception] = None
-            max_attempts = max(1, settings.LLM_MAX_RETRIES)
-            for attempt in range(max_attempts):
-                try:
-                    resp = await self.client.chat.completions.create(
-                        model=self.light_model_name,
-                        messages=messages,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                    )
-                    self._record_success()
-                    return resp
-                except Exception as e:
-                    last_err = e
-                    self._record_failure()
-                    if attempt >= max_attempts - 1:
-                        break
-                    delay = self._backoff_seconds(attempt)
-                    logger.warning(f"LLM 轻量决策失败（第 {attempt+1} 次），退避 {delay:.2f}s：{e}")
-                    await asyncio.sleep(delay)
-            if last_err is not None:
-                raise last_err
-        finally:
-            self.semaphore.release()
+        return await self._request(messages, model=self.light_model_name,
+                                   max_tokens=max_tokens, temperature=temperature)
 
     async def generate_answer(self, query: str, context_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         """生成问答回复"""
@@ -411,7 +362,7 @@ class LLMService:
 
         except Exception as e:
             response_time = time.time() - start_time
-            logger.error(f"LLM回复生成失败: {e}")
+            logger.error(f"LLM回复生成失败: {type(e).__name__}")
 
             return {
                 "answer": "抱歉, 生成回复时出现错误, 请稍后重试。",
@@ -419,7 +370,7 @@ class LLMService:
                 "tokens_used": 0,
                 "response_time": response_time,
                 "success": False,
-                "error": str(e),
+                "error": classify_generation_error(e).code,
             }
 
     async def stream_answer(self, query: str, context_chunks: List[Dict[str, Any]]) -> AsyncIterator[Dict[str, Any]]:
@@ -453,7 +404,7 @@ class LLMService:
                 temperature=self.temperature,
             )
 
-            async for event in stream:
+            async for event in self._stream_events(stream):
                 try:
                     # OpenAI v1: ChatCompletionChunk -> choices[0].delta.content
                     if hasattr(event, "choices") and event.choices:
@@ -486,10 +437,10 @@ class LLMService:
 
         except Exception as e:
             response_time = time.time() - started_at
-            logger.error(f"LLM流式生成失败: {e}")
+            logger.error(f"LLM流式生成失败: {type(e).__name__}")
             yield {
                 "type": "error",
-                "message": str(e),
+                "message": classify_generation_error(e).code,
                 "model_used": self.model,
                 "response_time": response_time,
                 "success": False,
@@ -517,7 +468,7 @@ class LLMService:
             return summary
 
         except Exception as e:
-            logger.error(f"文本摘要生成失败: {e}")
+            logger.error(f"文本摘要生成失败: {type(e).__name__}")
             return text[:max_length] + "..." if len(text) > max_length else text
 
     async def extract_keywords(self, text: str, max_keywords: int = 10) -> List[str]:
@@ -553,7 +504,7 @@ class LLMService:
                 logger.info(f"关键词本地回退成功, 共 {len(kws)} 个")
                 return kws
             except Exception as e2:
-                logger.warning(f"关键词提取失败且本地回退异常: {e} / {e2}")
+                logger.warning(f"关键词提取失败且本地回退异常: {type(e).__name__} / {type(e2).__name__}")
                 return []
 
     async def classify_query(self, query: str) -> Dict[str, Any]:
@@ -592,12 +543,12 @@ class LLMService:
             return {"category": category, "confidence": 0.8, "success": True}
 
         except Exception as e:
-            logger.error(f"查询分类失败: {e}")
+            logger.error(f"查询分类失败: {type(e).__name__}")
             return {
                 "category": "其他",
                 "confidence": 0.0,
                 "success": False,
-                "error": str(e),
+                "error": classify_generation_error(e).code,
             }
 
     async def health_check(self) -> bool:
@@ -701,13 +652,13 @@ class LLMService:
             }
 
         except Exception as e:
-            logger.error(f"查询重写失败: {e}")
+            logger.error(f"查询重写失败: {type(e).__name__}")
             return {
                 "rewritten_query": user_query,
                 "intent_tags": [],
                 "keywords": [],
                 "constraints": {},
                 "success": False,
-                "error": str(e),
+                "error": classify_generation_error(e).code,
             }
 

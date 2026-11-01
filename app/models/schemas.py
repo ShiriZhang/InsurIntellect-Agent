@@ -16,7 +16,7 @@ class RetrievedChunk(BaseModel):
     document_name: str = "未知文档"
     content: str = ""
     page_number: Optional[int] = None
-    similarity_score: float = 0.0
+    similarity_score: float = Field(default=0.0, description="cosine 证据相关性；不表示答案正确概率")
     metadata: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(extra="ignore")
@@ -43,7 +43,7 @@ class QueryResponse(BaseModel):
     response_time: float = 0.0
     chunks_used: int = 0
     retrieved_chunks: List[RetrievedChunk] = Field(default_factory=list)
-    confidence_score: float = 0.0
+    confidence_score: float = Field(default=0.0, description="RAG 主路径为最佳 cosine 证据相关性；不是正确概率")
     query_id: Optional[int] = None
     # UI state: answer | refusal | advice | llm_unavailable | degraded
     answer_kind: str = "answer"

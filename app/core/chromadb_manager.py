@@ -92,7 +92,7 @@ class ChromaDBManager:
                         logger.info(f"创建新 ChromaDB 集合: {collection_name}")
                         self._collection = client.create_collection(
                             name=collection_name,
-                            metadata={"hnsw:space": "cosine"},
+                            metadata={"hnsw:space": settings.EMBEDDING_DISTANCE},
                         )
 
                     logger.info(f"ChromaDB 集合初始化完成, 向量数 {self._collection.count()}")
@@ -112,7 +112,7 @@ class ChromaDBManager:
 
             self._collection = client.create_collection(
                 name=collection_name,
-                metadata={"hnsw:space": "cosine"},
+                metadata={"hnsw:space": settings.EMBEDDING_DISTANCE},
             )
             logger.info(f"重新创建 ChromaDB 集合: {collection_name}")
 

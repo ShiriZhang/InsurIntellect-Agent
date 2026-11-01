@@ -17,9 +17,7 @@ Author: InsurIntellect Agent Development Team
 Version: 1.0.0
 """
 
-import os
 import json
-import logging
 import asyncio
 from typing import Any, Dict, List, Tuple
 
@@ -31,37 +29,18 @@ from langchain_chroma import Chroma
 from app.models.schemas import QueryIntent
 from app.prompts import QUERY_ARCHITECT_PROMPT
 from app.core.fusion import reciprocal_rank_fusion
-import jieba
 from app.services.embedding_service import EmbeddingService
 from app.services.query_intent_service import QueryIntentService
+from app.services.retrieval_text import lexical_profile, rank_lexical_candidates
+from app.services.evidence_scores import cosine_distance, cosine_distance_to_score, finite_number
 
-# 兼容代码回退：若未显式设置 OpenAI 凭据，则尝试 siliconflow 字段（仅作 artisan 兜底）
-_api_key = (settings.OPENAI_API_KEY or settings.SILICONFLOW_API_KEY or "").strip()
-_base_url = (settings.OPENAI_BASE_URL or settings.SILICONFLOW_BASE_URL or "").strip()
-if _api_key:
-    os.environ.setdefault("OPENAI_API_KEY", _api_key)
-if _base_url:
-    os.environ.setdefault("OPENAI_BASE_URL", _base_url)
-
-logger = logging.getLogger(__name__)
+logger = app_get_logger(__name__)
 
 
 
-def _normalize_vector_score(score: float) -> float:
-    """Map raw vector score/distance into roughly [0,1] cosine-like similarity."""
-    try:
-        s = float(score)
-    except Exception:
-        return 0.0
-    if 0.0 <= s <= 1.0:
-        return s
-    # LangChain/Chroma may return distance (lower better). Cosine distance often in [0, 2].
-    if s > 1.0:
-        if s <= 2.0:
-            return max(0.0, min(1.0, 1.0 - s))
-        return max(0.0, min(1.0, 1.0 / (1.0 + s)))
-    # negative unexpected
-    return 0.0
+def _normalize_vector_score(raw_distance: float) -> float:
+    """Compatibility helper: input is explicitly a cosine distance."""
+    return cosine_distance_to_score(raw_distance)
 
 
 class InsurIntellectAgent:
@@ -79,23 +58,18 @@ class InsurIntellectAgent:
         
         初始化组件:
         - ChatOpenAI LLM实例
-        - OpenAI嵌入模型
+        - 本地 HuggingFace 嵌入模型
         - ChromaDB向量数据库检索器
         """
         logger.info("正在初始化InsurIntellect智能代理...")
         
         try:
             # 初始化 ChatOpenAI（OpenAI-compatible；兼容 siliconflow 回退）
-            _model = (
-                settings.OPENAI_MODEL_CORE
-                or settings.OPENAI_MODEL
-                or settings.SILICONFLOW_MODEL
-                or "gpt-5.4"
-            )
-            _api_key = (settings.OPENAI_API_KEY or settings.SILICONFLOW_API_KEY or "").strip()
-            _base_url = (settings.OPENAI_BASE_URL or settings.SILICONFLOW_BASE_URL or "").strip() or None
+            _model = settings.generation_model()
+            _api_key = settings.generation_api_key
+            _base_url = settings.generation_api_base_url
             self.llm = None
-            if _api_key:
+            if settings.generation_configured:
                 self.llm = ChatOpenAI(
                     model=_model,
                     temperature=settings.OPENAI_TEMPERATURE,
@@ -107,13 +81,13 @@ class InsurIntellectAgent:
             else:
                 logger.warning("未配置 API Key：跳过 ChatOpenAI 初始化（检索仍可用，生成走 llm_unavailable）")
             
-            # 初始化嵌入服务（双模式）
-            self.embedding_service = EmbeddingService(model_name=settings.OPENAI_EMBEDDING_MODEL)
+            # 初始化本地嵌入服务
+            self.embedding_service = EmbeddingService()
             self.embeddings = self.embedding_service.embedding_function
-            logger.info("嵌入服务初始化成功（双模式）")
+            logger.info("本地嵌入服务初始化成功")
             # 额外记录到应用主日志记录器，确保写入 logs/app.log
             try:
-                app_get_logger("insurintellect").info("嵌入服务初始化成功（双模式）")
+                app_get_logger("insurintellect").info("本地嵌入服务初始化成功")
             except Exception:
                 pass
             # 意图分类服务（KCP-FIX-4）
@@ -132,6 +106,7 @@ class InsurIntellectAgent:
                 self.vectorstore = Chroma(
                     client=chroma_client,
                     collection_name="insurance_documents",
+                    collection_metadata={"hnsw:space": settings.EMBEDDING_DISTANCE},
                     embedding_function=self.embeddings,
                     persist_directory=settings.CHROMA_PERSIST_DIRECTORY
                 )
@@ -368,7 +343,7 @@ class InsurIntellectAgent:
                 except Exception:
                     return False
 
-            async def _vector_search_k50() -> Tuple[List[Tuple[Document, float]], Dict[str, float], List[str]]:
+            async def _vector_search_k50() -> Tuple[List[Tuple[Document, float | None]], Dict[str, float | None], List[str]]:
                 try:
                     # 传入动态元数据过滤（如底层不支持，则由回退路径处理）
                     results = await asyncio.to_thread(
@@ -378,13 +353,13 @@ class InsurIntellectAgent:
                         filter=metadata_filter,
                     )
                     ids: List[str] = []
-                    score_map: Dict[str, float] = {}
+                    distance_map: Dict[str, float | None] = {}
                     for doc, score in results:
-                        cid = (doc.metadata or {}).get("chunk_id")
+                        cid = getattr(doc, "id", None) or (doc.metadata or {}).get("chunk_id")
                         if cid:
                             ids.append(cid)
-                            score_map[cid] = _normalize_vector_score(score)
-                    return results, score_map, ids
+                            distance_map[cid] = finite_number(score)
+                    return results, distance_map, ids
                 except Exception:
                     # 回退：使用底层 Chroma collection 查询距离
                     try:
@@ -409,24 +384,20 @@ class InsurIntellectAgent:
                         docs_inner = docs_arr[0] if docs_arr else []
                         metas_inner = metas_arr[0] if metas_arr else []
                         dists_inner = dists_arr[0] if dists_arr else []
-                        docs: List[Tuple[Document, float]] = []
-                        score_map: Dict[str, float] = {}
+                        docs: List[Tuple[Document, float | None]] = []
+                        distance_map: Dict[str, float | None] = {}
                         ids: List[str] = []
                         for i in range(len(ids_inner)):
                             cid = ids_inner[i]
                             text = docs_inner[i] if i < len(docs_inner) else ""
                             md = (metas_inner[i] if i < len(metas_inner) else {}) or {}
                             dist = dists_inner[i] if i < len(dists_inner) else None
-                            if dist is None:
-                                score = _normalize_vector_score(0.0)
-                            else:
-                                # 以(1 - 距离)作为相似度近似
-                                score = _normalize_vector_score(1.0 - float(dist))
+                            raw_distance = finite_number(dist)
                             d = Document(page_content=text, metadata=md)
-                            docs.append((d, score))
+                            docs.append((d, raw_distance))
                             ids.append(cid)
-                            score_map[cid] = score
-                        return docs, score_map, ids
+                            distance_map[cid] = raw_distance
+                        return docs, distance_map, ids
                     except Exception:
                         return [], {}, []
 
@@ -434,24 +405,16 @@ class InsurIntellectAgent:
                 if not self.bm25_available or not self.bm25_index:
                     return [], {}
                 try:
-                    tokens = [t.strip() for t in jieba.lcut(" ".join(rewritten_query.split())) if t.strip()]
-                except Exception:
-                    tokens = [t.strip() for t in rewritten_query.split() if t.strip()]
-                try:
                     model = self.bm25_index.get("bm25")
                     ids = self.bm25_index.get("ids") or []
-                    scores_all = model.get_scores(tokens) if hasattr(model, "get_scores") else []
-                    scored = [(ids[i], float(scores_all[i])) for i in range(len(ids))]
-                    scored.sort(key=lambda x: x[1], reverse=True)
-                    top_scored = scored[:50]
-                    bm25_ids = [cid for cid, _ in top_scored]
-                    bm25_scores = {cid: s for cid, s in top_scored}
+                    bm25_ids, bm25_scores = rank_lexical_candidates(
+                        model, ids, rewritten_query, chunk_map=self.bm25_chunk_map, limit=50)
 
                     # 应用动态元数据过滤（通过底层元数据获取）
                     if metadata_filter:
                         try:
                             collection = self.vectorstore._collection  # type: ignore[attr-defined]
-                            payload = await asyncio.to_thread(collection.get, ids=bm25_ids, include=["metadatas", "ids"])
+                            payload = await asyncio.to_thread(collection.get, ids=bm25_ids, include=["metadatas"])
                             ids_list = payload.get("ids", []) or []
                             metas_list = payload.get("metadatas", []) or []
                             filtered_ids: List[str] = []
@@ -465,13 +428,14 @@ class InsurIntellectAgent:
                             bm25_ids = filtered_ids
                             bm25_scores = filtered_scores
                         except Exception as e:
-                            logger.warning(f"BM25 过滤应用失败，继续未过滤结果：{e}")
+                            logger.warning(f"BM25 过滤应用失败，禁用本次关键词路径：{type(e).__name__}")
+                            return [], {}
 
                     return bm25_ids, bm25_scores
                 except Exception:
                     return [], {}
 
-            (vector_docs_scores, vector_score_map, vector_ids), (bm25_ids, bm25_score_map) = await asyncio.gather(
+            (_vector_docs_distances, vector_distance_map, vector_ids), (bm25_ids, bm25_score_map) = await asyncio.gather(
                 _vector_search_k50(),
                 _bm25_search_k50(),
             )
@@ -516,22 +480,16 @@ class InsurIntellectAgent:
                 for doc in top_docs:
                     md = doc.metadata or {}
                     cid = md.get("chunk_id")
-                    md["vector_score"] = vector_score_map.get(cid)
+                    raw_distance = vector_distance_map.get(cid)
+                    if raw_distance is None:
+                        # BM25-only candidates need evidence in the same embedding space.
+                        raw_distance = cosine_distance(query_embedding, md.get("embedding"))
+                    sim = cosine_distance_to_score(raw_distance)
+                    md["raw_distance"] = raw_distance
+                    md["vector_score"] = sim
                     md["bm25_score"] = bm25_score_map.get(cid)
                     md["rrf_score"] = rrf_scores.get(cid)
                     rd = md.get("ranking_details", {})
-                    # prefer vector cosine over rrf for UI + refusal gate
-                    sim = (
-                        rd.get("original_similarity")
-                        or md.get("vector_score")
-                        or md.get("rrf_score")
-                        or md.get("bm25_score")
-                        or 0.0
-                    )
-                    try:
-                        sim = float(sim)
-                    except Exception:
-                        sim = 0.0
                     retrieved_chunks.append({
                         "chunk_id": md.get("chunk_id"),
                         "document_id": md.get("document_id"),
@@ -547,7 +505,11 @@ class InsurIntellectAgent:
                             "expiry_date": md.get("expiry_date"),
                             "abolition_date": md.get("abolition_date"),
                             "keywords_json": md.get("keywords_json"),
-                            "vector_score": md.get("vector_score"),
+                            "raw_distance": raw_distance,
+                            "evidence_score": sim,
+                            "score_metric": "cosine",
+                            "evidence_status": "available" if raw_distance is not None else "unavailable",
+                            "vector_score": sim,
                             "bm25_score": md.get("bm25_score"),
                             "rrf_score": md.get("rrf_score"),
                         },
@@ -576,7 +538,11 @@ class InsurIntellectAgent:
         try:
             self.bm25_index = index_payload
             self.bm25_chunk_map = chunk_map or {}
-            self.bm25_available = bool(index_payload)
+            self.bm25_available = bool(
+                isinstance(index_payload, dict)
+                and index_payload.get("lexical_profile") == lexical_profile())
+            if index_payload and not self.bm25_available:
+                logger.warning("BM25 lexical profile missing/incompatible; rebuild keyword resources")
             logger.info("BM25 资源已注入到 RAGWorkflow")
         except Exception as e:
             logger.warning(f"BM25 资源注入失败: {e}")
@@ -592,7 +558,9 @@ class InsurIntellectAgent:
             ids_list = payload.get("ids", []) or []
             docs_list = payload.get("documents", []) or []
             metas_list = payload.get("metadatas", []) or []
-            embs_list = payload.get("embeddings", []) or []
+            embs_list = payload.get("embeddings")
+            if embs_list is None:
+                embs_list = []
             out: List[Document] = []
             for i in range(len(ids_list)):
                 text = docs_list[i] if i < len(docs_list) else None
@@ -607,7 +575,8 @@ class InsurIntellectAgent:
                         md["embedding"] = emb
                     except Exception:
                         pass
-                out.append(Document(page_content=text, metadata=md))
+                md["chunk_id"] = ids_list[i]
+                out.append(Document(page_content=text or "", metadata=md))
             return out
         except Exception:
             return []

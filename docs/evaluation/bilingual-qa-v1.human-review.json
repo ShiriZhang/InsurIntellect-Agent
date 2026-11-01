@@ -1,0 +1,509 @@
+{
+  "schema_version": 1,
+  "suite_id": "bilingual-qa-v1",
+  "dataset_sha256": "7ee45cd316820d9fe41d8e9301f4667f7018fbf0cfd888681393fac5212bb2e3",
+  "reviewer": "user",
+  "started_on": "2026-10-26",
+  "status": "completed",
+  "review_order": "acceptance facts, calibration facts, negatives, interactions",
+  "current_item_id": null,
+  "decisions": [
+    {
+      "item_id": "acc.zh.medical.waiting",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.medical.waiting.zh",
+        "acc.zh.medical.waiting.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.medical.start",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.medical.start.zh",
+        "acc.zh.medical.start.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.medical.approval",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.medical.approval.zh",
+        "acc.zh.medical.approval.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.medical.surgery",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.medical.surgery.zh",
+        "acc.zh.medical.surgery.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.critical.waiting",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.critical.waiting.zh",
+        "acc.zh.critical.waiting.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.critical.waiting-result",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.critical.waiting-result.zh",
+        "acc.zh.critical.waiting-result.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.critical.renewal",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.critical.renewal.zh",
+        "acc.zh.critical.renewal.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.life.cooling",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.life.cooling.zh",
+        "acc.zh.life.cooling.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.life.grace",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.life.grace.zh",
+        "acc.zh.life.grace.en"
+      ]
+    },
+    {
+      "item_id": "acc.zh.life.suicide",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.zh.life.suicide.zh",
+        "acc.zh.life.suicide.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.medical.daily",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.medical.daily.zh",
+        "acc.en.medical.daily.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.medical.icu",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.medical.icu.zh",
+        "acc.en.medical.icu.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.medical.outpatient",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.medical.outpatient.zh",
+        "acc.en.medical.outpatient.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.medical.ambulance",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.medical.ambulance.zh",
+        "acc.en.medical.ambulance.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.critical.aggregate",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.critical.aggregate.zh",
+        "acc.en.critical.aggregate.en"
+      ],
+      "approved_amendment": true
+    },
+    {
+      "item_id": "acc.en.critical.survival",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.critical.survival.zh",
+        "acc.en.critical.survival.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.critical.option",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.critical.option.zh",
+        "acc.en.critical.option.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.life.grace",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.life.grace.zh",
+        "acc.en.life.grace.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.life.tpd",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.life.tpd.zh",
+        "acc.en.life.tpd.en"
+      ]
+    },
+    {
+      "item_id": "acc.en.life.terminal",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "acc.en.life.terminal.zh",
+        "acc.en.life.terminal.en"
+      ]
+    },
+    {
+      "item_id": "cal.zh.medical.term",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.zh.medical.term"
+      ]
+    },
+    {
+      "item_id": "cal.zh.medical.notification",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.zh.medical.notification"
+      ]
+    },
+    {
+      "item_id": "cal.zh.critical.term",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.zh.critical.term"
+      ]
+    },
+    {
+      "item_id": "cal.zh.critical.amount",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.zh.critical.amount"
+      ]
+    },
+    {
+      "item_id": "cal.zh.life.group",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.zh.life.group"
+      ]
+    },
+    {
+      "item_id": "cal.zh.life.reinstatement",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.zh.life.reinstatement"
+      ]
+    },
+    {
+      "item_id": "cal.en.medical.recovery",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.en.medical.recovery"
+      ]
+    },
+    {
+      "item_id": "cal.en.medical.premium",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.en.medical.premium"
+      ]
+    },
+    {
+      "item_id": "cal.en.critical.premium",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.en.critical.premium"
+      ]
+    },
+    {
+      "item_id": "cal.en.critical.reinstatement",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.en.critical.reinstatement"
+      ]
+    },
+    {
+      "item_id": "cal.en.life.assignment",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.en.life.assignment"
+      ]
+    },
+    {
+      "item_id": "cal.en.life.death-notice",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "cal.en.life.death-notice"
+      ]
+    },
+    {
+      "item_id": "neg.missing.zh",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.missing.zh"
+      ]
+    },
+    {
+      "item_id": "neg.missing.en",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.missing.en"
+      ]
+    },
+    {
+      "item_id": "neg.missing.mixed",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.missing.mixed"
+      ]
+    },
+    {
+      "item_id": "neg.offtopic.1",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.offtopic.1"
+      ]
+    },
+    {
+      "item_id": "neg.offtopic.2",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.offtopic.2"
+      ]
+    },
+    {
+      "item_id": "neg.offtopic.3",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.offtopic.3"
+      ]
+    },
+    {
+      "item_id": "neg.advice.1",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.advice.1"
+      ]
+    },
+    {
+      "item_id": "neg.advice.2",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.advice.2"
+      ]
+    },
+    {
+      "item_id": "neg.advice.3",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.advice.3"
+      ]
+    },
+    {
+      "item_id": "neg.guarantee.1",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.guarantee.1"
+      ]
+    },
+    {
+      "item_id": "neg.guarantee.2",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.guarantee.2"
+      ]
+    },
+    {
+      "item_id": "neg.guarantee.3",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "neg.guarantee.3"
+      ]
+    },
+    {
+      "item_id": "interaction.compare.grace",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.compare.grace"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.compare.partial",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.compare.partial"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.followup.accident",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.followup.accident"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.followup.switch",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.followup.switch"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.delete.stream",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.delete.stream"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.delete.history",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.delete.history"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.delete.reupload",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.delete.reupload"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.compare.limit",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.compare.limit"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.citation.same-name",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.citation.same-name"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    },
+    {
+      "item_id": "interaction.upload.selection",
+      "decision": "correct",
+      "user_reply": "正确",
+      "covers_case_ids": [
+        "interaction.upload.selection"
+      ],
+      "review_scope": "scenario_design_only; not executed"
+    }
+  ],
+  "note": "54 explicit user confirmations recorded. Dataset/source and interaction-design review only; real-model answer grading and interaction execution have not occurred.",
+  "dataset_amendments": [
+    {
+      "case_id": "acc.en.critical.aggregate.zh",
+      "field": "question",
+      "original": "Complete Critical Protect选Protect 100时，重疾与重要机能给付合计上限是什么？",
+      "revised": "Complete Critical Protect选Protect 100时，重疾与重要机能给付合计上限是什么，重疾给付何时结束？",
+      "reason": "英文题另问重疾给付何时结束，现有中文题未明确询问；待用户确认后仅修改本题并更新身份记录。",
+      "user_reply": "正确",
+      "previous_dataset_sha256": "a69d4ce27e0157b1489dff86dbe49848ba49b145723c50f65342603454889d4c",
+      "revised_dataset_sha256": "c74831b628a51df5b72fe68c4207d66fe6de5bd5c21560bb0974dcc9a27c01c0",
+      "prior_decisions_preserved": "Only the current question wording changed; prior reviewed items were not modified."
+    }
+  ],
+  "dataset_metadata_finalization": {
+    "previous_dataset_sha256": "c74831b628a51df5b72fe68c4207d66fe6de5bd5c21560bb0974dcc9a27c01c0",
+    "revised_dataset_sha256": "7ee45cd316820d9fe41d8e9301f4667f7018fbf0cfd888681393fac5212bb2e3",
+    "changes": "Only review-status metadata was updated after all 54 explicit confirmations; questions, facts and expected behaviours were unchanged."
+  },
+  "completed_on": "2026-10-27",
+  "summary": {
+    "review_items": 54,
+    "correct": 54,
+    "incorrect": 0,
+    "uncertain": 0,
+    "acceptance_fact_points": 20,
+    "acceptance_questions": 40,
+    "calibration_questions": 12,
+    "negative_cases": 12,
+    "interaction_designs": 10,
+    "approved_question_amendments": 1,
+    "real_model_acceptance": "not_run",
+    "interaction_execution": "not_run"
+  }
+}

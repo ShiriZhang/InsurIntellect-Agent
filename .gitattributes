@@ -1,0 +1,4 @@
+# These records pin raw-byte SHA-256 identities, including human-approved dataset bytes.
+# Preserve their original bytes on every platform while retaining readable text diffs.
+docs/corpus/*.json -text whitespace=cr-at-eol
+docs/evaluation/*.json -text whitespace=cr-at-eol

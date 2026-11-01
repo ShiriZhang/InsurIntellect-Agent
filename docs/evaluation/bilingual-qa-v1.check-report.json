@@ -1,0 +1,18 @@
+{
+  "suite_id": "bilingual-qa-v1",
+  "data_valid": true,
+  "source_anchors_checked": true,
+  "facts": 32,
+  "acceptance_groups": {
+    "zh-to-zh": 10,
+    "en-to-zh": 10,
+    "zh-to-en": 10,
+    "en-to-en": 10
+  },
+  "negatives": 12,
+  "calibration": 12,
+  "interactions": 10,
+  "real_model_acceptance": "not_run",
+  "independent_human_review": "completed",
+  "dataset_sha256": "7ee45cd316820d9fe41d8e9301f4667f7018fbf0cfd888681393fac5212bb2e3"
+}

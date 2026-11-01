@@ -1,0 +1,2750 @@
+{
+  "schema_version": 1,
+  "suite_id": "bilingual-qa-v1",
+  "corpus_id": "official-v1",
+  "corpus_manifest_sha256": "eb1950b8c95be31c3a548addcdd809b0bf2c107a4291ec81f2968a4074e8333e",
+  "annotation": {
+    "author": "Codex",
+    "method": "对固定本地PDF逐条核对后编写事实、条件与反例，供人工语义评分；未冒称独立人工审核",
+    "independent_human_review": "completed",
+    "human_review": {
+      "reviewer": "user",
+      "completed_on": "2026-10-27",
+      "record": "bilingual-qa-v1.human-review.json",
+      "method": "用户逐项审阅聊天展示的来源、原文/摘要、问题、参考答案及边界和场景预期，并明确回复确认。",
+      "scope": "资料与场景设计复核，不是实际模型输出评分、交互执行或专业认证。"
+    }
+  },
+  "execution_status": "not_run",
+  "facts": [
+    {
+      "id": "acc.zh.medical.waiting",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.medical.waiting",
+      "source_id": "zh-medical",
+      "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "自本合同生效日起30 日为等待期。",
+          "page_text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        },
+        {
+          "page": 1,
+          "anchor": "被保险人因遭受意外事故导致住院治疗的。",
+          "page_text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        }
+      ],
+      "required_points": [
+        "一般住院医疗津贴疾病等待期为合同生效日起30日；等待期内发生的疾病造成住院，即使住院在30日后也不承担该项责任。",
+        "按第七条审核同意后成立生效的续保合同，以及意外事故导致的住院，无等待期。"
+      ],
+      "conditions": [
+        "限一般住院医疗津贴；其他责任及除外条件仍适用。"
+      ],
+      "forbidden_claims": [
+        "所有住院都没有等待期",
+        "等待期内发病只要晚住院就能给付"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "30",
+          "unit": "day",
+          "qualifier": "一般住院疾病等待期；起算为合同生效日"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.medical.start",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.medical.start",
+      "source_id": "zh-medical",
+      "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "本公司自被保险人每次住院的第4 日起",
+          "page_text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        },
+        {
+          "page": 1,
+          "anchor": "每次住院的给付日数为合理住院日数减3 日。",
+          "page_text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        }
+      ],
+      "required_points": [
+        "一般住院津贴从每次住院第4日起，按约定每日津贴给付；给付日数为合理住院日数减3日。"
+      ],
+      "conditions": [
+        "因意外或疾病，经医院确诊必须住院；须符合等待期及其他合同约定。"
+      ],
+      "forbidden_claims": [
+        "住院第一天即按全额日数给付"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "4",
+          "unit": "day",
+          "qualifier": "每次住院起付日"
+        },
+        {
+          "kind": "duration",
+          "value": "3",
+          "unit": "day",
+          "qualifier": "合理住院日数扣减"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.medical.approval",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.medical.approval",
+      "source_id": "zh-medical",
+      "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "被保险人每次住院日数超过15 日的，须事先向本公司提出书面申请",
+          "page_text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        }
+      ],
+      "required_points": [
+        "每次住院超过15日须事先书面申请，并经公司同意，才对超出部分给付；否则每次给付以15日为限。"
+      ],
+      "conditions": [
+        "仍适用一般住院医疗津贴的日数计算及责任条件；不是自动延长。"
+      ],
+      "forbidden_claims": [
+        "超过15日无需申请自动全部给付"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "15",
+          "unit": "day",
+          "qualifier": "超出部分须事先书面申请并获同意"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.medical.surgery",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.medical.surgery",
+      "source_id": "zh-medical",
+      "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "手术医疗津贴给付金额以5000 元为限",
+          "page_text_sha256": "bdbfa4bfc7e79be6eeccfc92eabdb46ffe85a1b8c1f1f996514f34bdbef6955e"
+        },
+        {
+          "page": 2,
+          "anchor": "累计给付手术医疗津贴金额达到5000",
+          "page_text_sha256": "bdbfa4bfc7e79be6eeccfc92eabdb46ffe85a1b8c1f1f996514f34bdbef6955e"
+        }
+      ],
+      "required_points": [
+        "住院手术医疗津贴按附表2手术项目标准给付，给付金额以人民币5000元为限；累计达到5000元，该项责任终止。"
+      ],
+      "conditions": [
+        "因意外或疾病经医院确诊并施行住院手术；等待期、责任免除仍须满足；这不是全额医疗费用报销。"
+      ],
+      "forbidden_claims": [
+        "每次无限重置5000元额度",
+        "所有手术费用全额报销"
+      ],
+      "critical_fields": [
+        {
+          "kind": "amount",
+          "value": "5000",
+          "unit": "CNY",
+          "qualifier": "住院手术医疗津贴限额及累计终止线"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.critical.waiting",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.critical.waiting",
+      "source_id": "zh-critical-illness",
+      "source_sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "jurisdiction": "中国内地／上海医保账户适用条件",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "自本合同生效日起90 日为等待期",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        },
+        {
+          "page": 2,
+          "anchor": "导致初次发生重大疾病的无等待期。",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        }
+      ],
+      "required_points": [
+        "首次投保或未续保的，合同生效日起90日为等待期；续保或意外事故导致初次发生重大疾病，无等待期。"
+      ],
+      "conditions": [
+        "限上海医保账户重疾合同；重大疾病及意外须满足本合同定义。"
+      ],
+      "forbidden_claims": [
+        "所有重疾均无等待期",
+        "把一般住院的30日套到此合同"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "90",
+          "unit": "day",
+          "qualifier": "首次或未续保；起算为本合同生效日"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.critical.waiting-result",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.critical.waiting-result",
+      "source_id": "zh-critical-illness",
+      "source_sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "jurisdiction": "中国内地／上海医保账户适用条件",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "被保险人在等待期内经医院",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        },
+        {
+          "page": 2,
+          "anchor": "本公司对投保人返还所交保险费后，本保险合同终止。",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        }
+      ],
+      "required_points": [
+        "等待期内经医院确诊初次发生合同定义的重大疾病，不承担给付保险金责任；向投保人返还所交保费后合同终止。"
+      ],
+      "conditions": [
+        "问题限等待期内首次确诊，不延伸到续保或意外无等待期情形。"
+      ],
+      "forbidden_claims": [
+        "返还保费后合同仍继续",
+        "等待期内确诊也给付重疾保险金额"
+      ],
+      "critical_fields": [
+        {
+          "kind": "negation",
+          "value": "no benefit",
+          "unit": "contract",
+          "qualifier": "等待期内首次确诊重疾"
+        },
+        {
+          "kind": "condition",
+          "value": "terminate after premium refund",
+          "unit": "contract",
+          "qualifier": "退还所交保费给投保人"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.critical.renewal",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.critical.renewal",
+      "source_id": "zh-critical-illness",
+      "source_sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "jurisdiction": "中国内地／上海医保账户适用条件",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "本合同最高续保年龄为75 周岁（含）。",
+          "page_text_sha256": "0bbffe919f240e8c0c415421081798ba8db188852868c24cceed1211da9ffc43"
+        },
+        {
+          "page": 1,
+          "anchor": "则最高续保年龄为65 周岁（含）。",
+          "page_text_sha256": "0bbffe919f240e8c0c415421081798ba8db188852868c24cceed1211da9ffc43"
+        }
+      ],
+      "required_points": [
+        "最高续保年龄为75周岁（含）；已患本合同所指重大疾病的不再有续保资格。",
+        "被保险人年满55周岁（含）后如有未续保情形，则最高续保年龄改为65周岁（含）。"
+      ],
+      "conditions": [
+        "续保须经公司审核同意、收取保费并签发保单，不是保证续保。"
+      ],
+      "forbidden_claims": [
+        "任何人均保证续保到75岁"
+      ],
+      "critical_fields": [
+        {
+          "kind": "age",
+          "value": "75",
+          "unit": "year",
+          "qualifier": "一般最高续保年龄，含"
+        },
+        {
+          "kind": "age",
+          "value": "55",
+          "unit": "year",
+          "qualifier": "此年龄后存在未续保情形，含"
+        },
+        {
+          "kind": "age",
+          "value": "65",
+          "unit": "year",
+          "qualifier": "该未续保情形下最高续保年龄，含"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.life.cooling",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.life.cooling",
+      "source_id": "zh-life",
+      "source_sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "自投保人签收本合同次日起10 日内为犹豫期。",
+          "page_text_sha256": "8227d129ff527d506b35252a30d4c37bf2be41292d02ff641760be54fd0ded18"
+        },
+        {
+          "page": 1,
+          "anchor": "本公司将无息退还",
+          "page_text_sha256": "8227d129ff527d506b35252a30d4c37bf2be41292d02ff641760be54fd0ded18"
+        }
+      ],
+      "required_points": [
+        "犹豫期为投保人签收合同次日起10日内；期间解除退还全部已付保费，不计利息。",
+        "解除须填写申请书并提供合同与有效身份证明；公司收到书面解除申请即解除，解除前事故不承担责任。"
+      ],
+      "conditions": [
+        "限该团体定期寿险的犹豫期解除，不把规则推广到犹豫期后退保。"
+      ],
+      "forbidden_claims": [
+        "生效日起14日",
+        "只退现金价值"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "10",
+          "unit": "day",
+          "qualifier": "签收次日起；犹豫期"
+        },
+        {
+          "kind": "amount",
+          "value": "all paid premiums",
+          "unit": "premium",
+          "qualifier": "无息退还"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.life.grace",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.life.grace",
+      "source_id": "zh-life",
+      "source_sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 3,
+          "anchor": "自保险费约定支付日的次日零时起60 日为宽限期。",
+          "page_text_sha256": "0e3257249ba462154fc0f92bd746137911dcfd2566d20bbfb2aaa27a03abf89a"
+        },
+        {
+          "page": 4,
+          "anchor": "给付保险金时会扣减该被保险人对应的欠交保险费。",
+          "page_text_sha256": "d30f9c1d08931d5edb5b86cc3db265208760510fee3d876f262ada8dd8601333"
+        }
+      ],
+      "required_points": [
+        "分期交费并已支付首期保费，除另有约定外，从约定支付日次日零时起有60日宽限期。",
+        "宽限期内仍承担保险责任，给付扣减对应欠交保费；期满仍未支付，合同于期满次日零时效力中止。"
+      ],
+      "conditions": [
+        "分期交费、首期已付；除另有约定外。"
+      ],
+      "forbidden_claims": [
+        "宽限期是30日",
+        "宽限期后自动永久终止而非效力中止"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "60",
+          "unit": "day",
+          "qualifier": "约定支付日次日零时起"
+        },
+        {
+          "kind": "condition",
+          "value": "suspend",
+          "unit": "contract",
+          "qualifier": "宽限期满仍未付"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.zh.life.suicide",
+      "split": "acceptance",
+      "semantic_key": "acc.zh.life.suicide",
+      "source_id": "zh-life",
+      "source_sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "自本合同成立或者合同效力恢复之日起2 年内自杀",
+          "page_text_sha256": "8227d129ff527d506b35252a30d4c37bf2be41292d02ff641760be54fd0ded18"
+        },
+        {
+          "page": 1,
+          "anchor": "但被保险人自杀时为无民事行为能力",
+          "page_text_sha256": "8227d129ff527d506b35252a30d4c37bf2be41292d02ff641760be54fd0ded18"
+        }
+      ],
+      "required_points": [
+        "被保险人自合同成立或复效之日起2年内自杀导致身故，属于不承担身故给付责任的情形；自杀时无民事行为能力者除外。"
+      ],
+      "conditions": [
+        "明确起算点是成立或复效；不能省略无民事行为能力例外。"
+      ],
+      "forbidden_claims": [
+        "任何自杀永远除外",
+        "从签收次日计算1年"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "2",
+          "unit": "year",
+          "qualifier": "成立或复效之日起"
+        },
+        {
+          "kind": "exception",
+          "value": "incapacity for civil conduct",
+          "unit": "person",
+          "qualifier": "自杀当时"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.medical.daily",
+      "split": "acceptance",
+      "semantic_key": "acc.en.medical.daily",
+      "source_id": "en-medical",
+      "source_sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "Daily hospital cash (per day; up to 730 days)",
+          "page_text_sha256": "67a2734b7685ae3b6aec48894404bd2ab1ebad8be12e604eb9f49369979d8d52"
+        },
+        {
+          "page": 5,
+          "anchor": "each complete 24-hour period",
+          "page_text_sha256": "c5268460cf5199f107736c0cdd650b712f5dae69af5a5f8d2b278f46580c7300"
+        }
+      ],
+      "required_points": [
+        "Classic、Deluxe、Preferred每日住院现金分别为S$100、S$200、S$300；每次伤病最多730日，按完整24小时住院计算。"
+      ],
+      "conditions": [
+        "保单有效，因伤病获医生建议而以床位病人住院；出院或保单终止较早者停止。"
+      ],
+      "forbidden_claims": [
+        "把金额说成人民币或所有计划统一300",
+        "不足24小时也自动领一日"
+      ],
+      "critical_fields": [
+        {
+          "kind": "amount",
+          "value": "100/200/300",
+          "unit": "SGD/day",
+          "qualifier": "Classic/Deluxe/Preferred"
+        },
+        {
+          "kind": "duration",
+          "value": "730",
+          "unit": "day",
+          "qualifier": "每次伤病最高日数"
+        },
+        {
+          "kind": "duration",
+          "value": "24",
+          "unit": "hour",
+          "qualifier": "每个完整住院计付期间"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.medical.icu",
+      "split": "acceptance",
+      "semantic_key": "acc.en.medical.icu",
+      "source_id": "en-medical",
+      "source_sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 6,
+          "anchor": "up to 60 days for every",
+          "page_text_sha256": "ccd4e3cf637be93028a452a372e3728b5e43bc6796f7d35075cc13b865f2e241"
+        },
+        {
+          "page": 6,
+          "anchor": "but not more than one section.",
+          "page_text_sha256": "ccd4e3cf637be93028a452a372e3728b5e43bc6796f7d35075cc13b865f2e241"
+        }
+      ],
+      "required_points": [
+        "ICU津贴每次伤病最多60日，按完整24小时ICU住院计付；同一住院日只能选择section 1或2之一，不能叠加。"
+      ],
+      "conditions": [
+        "保单有效，伤病原因并由医生建议住ICU；离开ICU或保单终止较早者停止。"
+      ],
+      "forbidden_claims": [
+        "同一天每日住院现金和ICU双领",
+        "ICU上限730日"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "60",
+          "unit": "day",
+          "qualifier": "每次伤病ICU上限"
+        },
+        {
+          "kind": "negation",
+          "value": "no stacking",
+          "unit": "same hospital day",
+          "qualifier": "section 1与2不可同领"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.medical.outpatient",
+      "split": "acceptance",
+      "semantic_key": "acc.en.medical.outpatient",
+      "source_id": "en-medical",
+      "source_sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 7,
+          "anchor": "within 48 hours following",
+          "page_text_sha256": "8969fc7fc93e1ccfe4b69118cb043d82574fa421667bb04fc8bee1c554c0d4c6"
+        },
+        {
+          "page": 7,
+          "anchor": "30  days  from  the  date  of",
+          "page_text_sha256": "8969fc7fc93e1ccfe4b69118cb043d82574fa421667bb04fc8bee1c554c0d4c6"
+        }
+      ],
+      "required_points": [
+        "意外受伤急诊门诊费用的初次治疗须在事故后48小时内；同一事故同一伤害的后续治疗费用最长到事故日起30日。"
+      ],
+      "conditions": [
+        "需条款认可从业者治疗、书面病况报告与原始账单收据，金额仍受计划表上限及除外限制。"
+      ],
+      "forbidden_claims": [
+        "任何疾病门诊都适用",
+        "随访30日从首次门诊起算"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "48",
+          "unit": "hour",
+          "qualifier": "事故后急诊治疗"
+        },
+        {
+          "kind": "duration",
+          "value": "30",
+          "unit": "day",
+          "qualifier": "事故日起同事故同伤害随访"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.medical.ambulance",
+      "split": "acceptance",
+      "semantic_key": "acc.en.medical.ambulance",
+      "source_id": "en-medical",
+      "source_sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "Ambulance Expenses (per policy year)",
+          "page_text_sha256": "67a2734b7685ae3b6aec48894404bd2ab1ebad8be12e604eb9f49369979d8d52"
+        },
+        {
+          "page": 7,
+          "anchor": "We will pay for only one ambulance transportation for the same injury or sickness during the policy year.",
+          "page_text_sha256": "8969fc7fc93e1ccfe4b69118cb043d82574fa421667bb04fc8bee1c554c0d4c6"
+        },
+        {
+          "page": 7,
+          "anchor": "air ambulance, taxi, bus or mass rapid transit.",
+          "page_text_sha256": "8969fc7fc93e1ccfe4b69118cb043d82574fa421667bb04fc8bee1c554c0d4c6"
+        }
+      ],
+      "required_points": [
+        "三档救护车费用上限均为每保单年度S$500，按实际送院住院费用给付；同一伤病年度仅一次运送。",
+        "只有正按section 1或2给付才可申领，须原始救护车账单收据；不付空中救护、出租车、公交或地铁费用。"
+      ],
+      "conditions": [
+        "送往医院住院，不是任意交通津贴。"
+      ],
+      "forbidden_claims": [
+        "每次打车均可领500",
+        "每次伤病可无限次救护车"
+      ],
+      "critical_fields": [
+        {
+          "kind": "amount",
+          "value": "500",
+          "unit": "SGD/policy year",
+          "qualifier": "三档相同"
+        },
+        {
+          "kind": "count",
+          "value": "1",
+          "unit": "transport",
+          "qualifier": "每保单年度同一伤病"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.critical.aggregate",
+      "split": "acceptance",
+      "semantic_key": "acc.en.critical.aggregate",
+      "source_id": "en-critical-illness",
+      "source_sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "when aggregated will not be more than 100% of the sum assured",
+          "page_text_sha256": "282b661cd00f94451bb3f963db475b0bf710bbcabdc28479a9bc2cdf3309c791"
+        },
+        {
+          "page": 2,
+          "anchor": "reaches 100% of the sum assured.",
+          "page_text_sha256": "c131af68921d846f55adf0e55317224ac206431fdc435de7f9d47bd2d5c4bd42"
+        }
+      ],
+      "required_points": [
+        "仅Protect 100：section 1(a)重疾及1(c)重要机能给付合计不超过保额100%，减去欠款；合计给付到100%后该项重疾给付结束。"
+      ],
+      "conditions": [
+        "不把Protect 100规则套到Protect Prime/Max，也不把给付结束说成所有保单责任必然终止。"
+      ],
+      "forbidden_claims": [
+        "重疾和重要机能各另领100%",
+        "Prime及Max同样仅此额度"
+      ],
+      "critical_fields": [
+        {
+          "kind": "percentage",
+          "value": "100",
+          "unit": "percent of sum assured",
+          "qualifier": "Protect 100的1(a)与1(c)合计，减欠款"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.critical.survival",
+      "split": "acceptance",
+      "semantic_key": "acc.en.critical.survival",
+      "source_id": "en-critical-illness",
+      "source_sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "survives at least 7 days",
+          "page_text_sha256": "c131af68921d846f55adf0e55317224ac206431fdc435de7f9d47bd2d5c4bd42"
+        },
+        {
+          "page": 2,
+          "anchor": "maximum of 1 claim is payable only under early stage",
+          "page_text_sha256": "c131af68921d846f55adf0e55317224ac206431fdc435de7f9d47bd2d5c4bd42"
+        }
+      ],
+      "required_points": [
+        "Protect 100早期/中期重疾，须在诊断日或手术日两者较晚日起至少生存7日；该早期/中期合计最多一次索赔。"
+      ],
+      "conditions": [
+        "给付尚未终止；未有早期/中期重要机能给付获批；仍受同日诊断择最高一项及同疾病跨已发保单S$350,000上限等本页条件约束。"
+      ],
+      "forbidden_claims": [
+        "诊断当天自动赔付",
+        "从诊断与手术较早日开始算"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "7",
+          "unit": "day",
+          "qualifier": "诊断/手术较晚日起至少生存"
+        },
+        {
+          "kind": "count",
+          "value": "1",
+          "unit": "claim",
+          "qualifier": "Protect100早期/中期合计最多一次"
+        },
+        {
+          "kind": "amount",
+          "value": "350000",
+          "unit": "SGD",
+          "qualifier": "同一疾病早期/中期、同一被保险人所有已发且已给付的保单合计上限"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.critical.option",
+      "split": "acceptance",
+      "semantic_key": "acc.en.critical.option",
+      "source_id": "en-critical-illness",
+      "source_sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "Protect 100, Protect Prime or Protect Max option.",
+          "page_text_sha256": "282b661cd00f94451bb3f963db475b0bf710bbcabdc28479a9bc2cdf3309c791"
+        },
+        {
+          "page": 1,
+          "anchor": "cannot be changed.",
+          "page_text_sha256": "282b661cd00f94451bb3f963db475b0bf710bbcabdc28479a9bc2cdf3309c791"
+        }
+      ],
+      "required_points": [
+        "可选Protect 100、Protect Prime、Protect Max；须在保单开始时选择，此后不可更改，已选档记载于保单表。"
+      ],
+      "conditions": [
+        "仅该产品选项规则，不表示可据此推荐购买某一档。"
+      ],
+      "forbidden_claims": [
+        "随时自由切换三档"
+      ],
+      "critical_fields": [
+        {
+          "kind": "negation",
+          "value": "cannot change",
+          "unit": "option",
+          "qualifier": "policy inception时确定"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.life.grace",
+      "split": "acceptance",
+      "semantic_key": "acc.en.life.grace",
+      "source_id": "en-life",
+      "source_sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "You will have 30 days as a period of grace",
+          "page_text_sha256": "3cc43121c7baf3c4f09306f6607c8e1b22e5ea3cc3be2dbb22235bc268c7c2bf"
+        },
+        {
+          "page": 1,
+          "anchor": "we will take off any unpaid premiums from the benefits.",
+          "page_text_sha256": "3cc43121c7baf3c4f09306f6607c8e1b22e5ea3cc3be2dbb22235bc268c7c2bf"
+        },
+        {
+          "page": 1,
+          "anchor": "this policy and its rider (if any) will end.",
+          "page_text_sha256": "3cc43121c7baf3c4f09306f6607c8e1b22e5ea3cc3be2dbb22235bc268c7c2bf"
+        }
+      ],
+      "required_points": [
+        "后续保费有30日宽限期；期内应付保险金会扣欠交保费；期满仍未付，该保单及附约（如有）结束。"
+      ],
+      "conditions": [
+        "首期保费在申请时支付；宽限针对后续到期保费，不套用平安团体的60日规则。"
+      ],
+      "forbidden_claims": [
+        "宽限60日",
+        "期内不扣欠费",
+        "期满只中止而不结束"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "30",
+          "unit": "day",
+          "qualifier": "后续保费宽限"
+        },
+        {
+          "kind": "condition",
+          "value": "end",
+          "unit": "policy and riders",
+          "qualifier": "宽限后仍未付"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.life.tpd",
+      "split": "acceptance",
+      "semantic_key": "acc.en.life.tpd",
+      "source_id": "en-life",
+      "source_sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "at least six months in",
+          "page_text_sha256": "3a2ae80e3cce19093fb4a829c1c80624c89491c3ff66c9b72b5d6605c041d5ea"
+        },
+        {
+          "page": 2,
+          "anchor": "merely unable to perform the same job",
+          "page_text_sha256": "3a2ae80e3cce19093fb4a829c1c80624c89491c3ff66c9b72b5d6605c041d5ea"
+        }
+      ],
+      "required_points": [
+        "65岁以下按不能从事任何职业的TPD口径，而非只不能做原工作；须由注册医生认证全残已连续至少6个月。"
+      ],
+      "conditions": [
+        "本问题只核对职业能力与认证时长；自伤、违法/故意危险、酒精药物等除外及全残定义仍适用，不保证个人索赔。"
+      ],
+      "forbidden_claims": [
+        "不能做原工作即可认定",
+        "未满6个月必然给付"
+      ],
+      "critical_fields": [
+        {
+          "kind": "age",
+          "value": "65",
+          "unit": "year",
+          "qualifier": "under65"
+        },
+        {
+          "kind": "duration",
+          "value": "6",
+          "unit": "consecutive month",
+          "qualifier": "注册医生认证TPD已持续至少此时长"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "acc.en.life.terminal",
+      "split": "acceptance",
+      "semantic_key": "acc.en.life.terminal",
+      "source_id": "en-life",
+      "source_sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 4,
+          "anchor": "the insured is expected to live for no more than 12 months.",
+          "page_text_sha256": "7c815b97ac401ae613f30e77801effdfd4ec2dd648123f8bef72de38d7c29217"
+        },
+        {
+          "page": 4,
+          "anchor": "Terminal Illness in the presence of HIV infection is excluded.",
+          "page_text_sha256": "7c815b97ac401ae613f30e77801effdfd4ec2dd648123f8bef72de38d7c29217"
+        }
+      ],
+      "required_points": [
+        "索赔时尽管合理治疗，预期寿命不超过12个月；治疗专科医生须提供病况、可能治疗及预后依据并认证，保险人可委任独立专科确认。",
+        "HIV感染存在情况下的terminal illness不在保障范围。"
+      ],
+      "conditions": [
+        "限该合同terminal illness定义，不以一般重疾确诊或助理推测替代专科证据。"
+      ],
+      "forbidden_claims": [
+        "所有重疾都等于terminal illness",
+        "省略HIV除外",
+        "阈值是24个月"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "12",
+          "unit": "month",
+          "qualifier": "索赔时，尽管医疗干预，预期寿命不超过"
+        },
+        {
+          "kind": "exclusion",
+          "value": "HIV infection",
+          "unit": "terminal illness",
+          "qualifier": "存在HIV感染时除外"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.zh.medical.term",
+      "split": "calibration",
+      "semantic_key": "cal.zh.medical.term",
+      "source_id": "zh-medical",
+      "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 3,
+          "anchor": "本合同的保险期间最长为1 年。",
+          "page_text_sha256": "30a71f056c21a892e264ea596c954789d2d608032948fd142f21e87a10a17572"
+        }
+      ],
+      "required_points": [
+        "保险期间最长1年；期满前可申请续保，经审核同意并收取保费，续保自期满次日零时起生效，续期最长1年。"
+      ],
+      "conditions": [
+        "不能把可申请续保当作保证续保。"
+      ],
+      "forbidden_claims": [
+        "保证终身续保"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "1",
+          "unit": "year",
+          "qualifier": "保险期间最长"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.zh.medical.notification",
+      "split": "calibration",
+      "semantic_key": "cal.zh.medical.notification",
+      "source_id": "zh-medical",
+      "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 4,
+          "anchor": "投保人或受益人应当在知道保险事故后10 日内通知本公司。",
+          "page_text_sha256": "29598cf56103cfaa14139c01a79b77d50ab41695a0eade662e6ba17b2c3cd331"
+        }
+      ],
+      "required_points": [
+        "知道事故后10日内通知；故意或重大过失迟报导致性质/原因/损失难确定，仅不承担无法确定部分；已及时知道或迟报不影响确定等例外保留。"
+      ],
+      "conditions": [
+        "迟报并不等于所有保险金一律拒付。"
+      ],
+      "forbidden_claims": [
+        "任何迟报均全部拒赔"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "10",
+          "unit": "day",
+          "qualifier": "知道保险事故后"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.zh.critical.term",
+      "split": "calibration",
+      "semantic_key": "cal.zh.critical.term",
+      "source_id": "zh-critical-illness",
+      "source_sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "jurisdiction": "中国内地／上海医保账户适用条件",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "本合同的保险期间为1 年。",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        },
+        {
+          "page": 2,
+          "anchor": "投保人应于投保时一次性支付保险费。",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        }
+      ],
+      "required_points": [
+        "该重疾合同保险期间1年；投保时一次性支付保费。"
+      ],
+      "conditions": [
+        "只适用这份合同，不延伸为终身保障。"
+      ],
+      "forbidden_claims": [
+        "分期终身交费"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "1",
+          "unit": "year",
+          "qualifier": "保险期间"
+        },
+        {
+          "kind": "condition",
+          "value": "single payment",
+          "unit": "premium",
+          "qualifier": "投保时"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.zh.critical.amount",
+      "split": "calibration",
+      "semantic_key": "cal.zh.critical.amount",
+      "source_id": "zh-critical-illness",
+      "source_sha256": "90b2c0f18177bf1f8cc42148c2dd681a1378ca464d76c61a8003e695855f82e4",
+      "jurisdiction": "中国内地／上海医保账户适用条件",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "被保险人经医院确诊初次发生重大疾病的，本公司按其保险金额给付重大疾病保险金，本保险合同终止。",
+          "page_text_sha256": "1e685a7ab99d771907ab4e59776b4d56cbc61bb724d1215ec80c94c2670af76a"
+        }
+      ],
+      "required_points": [
+        "有效期内符合条件的首次重疾确诊，按保险金额给付后合同终止；金额须看保险单，不能捏造个人保额。"
+      ],
+      "conditions": [
+        "等待期及其他责任约定仍适用。"
+      ],
+      "forbidden_claims": [
+        "多次重疾每次都重置全额保额"
+      ],
+      "critical_fields": [
+        {
+          "kind": "condition",
+          "value": "terminate after payment",
+          "unit": "contract",
+          "qualifier": "首次符合约定重疾给付"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.zh.life.group",
+      "split": "calibration",
+      "semantic_key": "cal.zh.life.group",
+      "source_id": "zh-life",
+      "source_sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 1,
+          "anchor": "参保成员的配偶与子女也可参加本保险。",
+          "page_text_sha256": "8227d129ff527d506b35252a30d4c37bf2be41292d02ff641760be54fd0ded18"
+        }
+      ],
+      "required_points": [
+        "团体可为成员投保，参保成员配偶和子女也可参加；另有约定从约定。"
+      ],
+      "conditions": [
+        "不是向任意非团体个人开放的承诺。"
+      ],
+      "forbidden_claims": [
+        "只有员工本人可参加"
+      ],
+      "critical_fields": [
+        {
+          "kind": "condition",
+          "value": "spouses and children may participate",
+          "unit": "insured group",
+          "qualifier": "另有约定从约定"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.zh.life.reinstatement",
+      "split": "calibration",
+      "semantic_key": "cal.zh.life.reinstatement",
+      "source_id": "zh-life",
+      "source_sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+      "jurisdiction": "中国内地",
+      "evidence": [
+        {
+          "page": 4,
+          "anchor": "自本合同效力中止之日起满2 年投保人和本公司未达成协议的",
+          "page_text_sha256": "d30f9c1d08931d5edb5b86cc3db265208760510fee3d876f262ada8dd8601333"
+        }
+      ],
+      "required_points": [
+        "中止期间可申请复效，协商达成协议并补交保费日起恢复；中止满2年仍未达成协议，公司有权解除并退还中止时现金价值。"
+      ],
+      "conditions": [
+        "不自动恢复；中止期间不承担责任。"
+      ],
+      "forbidden_claims": [
+        "补费即自动复效且可追溯理赔"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "2",
+          "unit": "year",
+          "qualifier": "效力中止起满此期仍未达成协议，公司可解除"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.en.medical.recovery",
+      "split": "calibration",
+      "semantic_key": "cal.en.medical.recovery",
+      "source_id": "en-medical",
+      "source_sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 8,
+          "anchor": "up to 5 days for every injury or sickness.",
+          "page_text_sha256": "63ca8b58b2d80ae73b2e40ebb698da6ab08d1fec408eeabc327d2f19a1d3a327"
+        }
+      ],
+      "required_points": [
+        "出院后因伤病立即居家休养获病假，每次伤病最多5日；须正领取section1或2，并由同院医生/专科出院后立即出具病假证明或等效证明。"
+      ],
+      "conditions": [
+        "不是所有自行居家休息均可给付。"
+      ],
+      "forbidden_claims": [
+        "无住院亦可领5日"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "5",
+          "unit": "day",
+          "qualifier": "每次伤病居家恢复最高日数"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.en.medical.premium",
+      "split": "calibration",
+      "semantic_key": "cal.en.medical.premium",
+      "source_id": "en-medical",
+      "source_sha256": "748974ff2458f5bba8f15dc88bc46dee675a1aeafa6b2153a605e12e18489f9a",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 10,
+          "anchor": "at least 30 days before the change",
+          "page_text_sha256": "df7633c52bec175895cd8f147483a59f418fb121c99c78f4d64ba17392a1732a"
+        }
+      ],
+      "required_points": [
+        "保费可以改变；至少变更前30日书面告知投保人新保费，可寄最后地址或电邮地址。"
+      ],
+      "conditions": [
+        "不是保费保证不变。"
+      ],
+      "forbidden_claims": [
+        "无需任何通知即可涨价"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "30",
+          "unit": "day",
+          "qualifier": "新保费生效前至少通知"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.en.critical.premium",
+      "split": "calibration",
+      "semantic_key": "cal.en.critical.premium",
+      "source_id": "en-critical-illness",
+      "source_sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 15,
+          "anchor": "The premium that you pay for this policy is not guaranteed.",
+          "page_text_sha256": "38d22e595f37e8aad731ebc43bc5854b6643d98b605a7736d2bee94c9240e15e"
+        }
+      ],
+      "required_points": [
+        "该重疾保费不保证不变；变更前至少30日书面通知。"
+      ],
+      "conditions": [
+        "适用Complete Critical Protect而不是从其他产品类推。"
+      ],
+      "forbidden_claims": [
+        "终身保费保证不变"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "30",
+          "unit": "day",
+          "qualifier": "变更保费前至少书面通知"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.en.critical.reinstatement",
+      "split": "calibration",
+      "semantic_key": "cal.en.critical.reinstatement",
+      "source_id": "en-critical-illness",
+      "source_sha256": "a706eadfa425a6129efc8665e8c9dc080380448cd3413ae0b29c6580c174d935",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 15,
+          "anchor": "within 36 months",
+          "page_text_sha256": "38d22e595f37e8aad731ebc43bc5854b6643d98b605a7736d2bee94c9240e15e"
+        },
+        {
+          "page": 15,
+          "anchor": "there is no change in the risks",
+          "page_text_sha256": "38d22e595f37e8aad731ebc43bc5854b6643d98b605a7736d2bee94c9240e15e"
+        }
+      ],
+      "required_points": [
+        "欠费导致结束后可在36个月内补欠费及利息申请复效；须满意健康证明且风险未变；若申请时未要求健康申报或体检则不需该健康证明。"
+      ],
+      "conditions": [
+        "不是只补保费即无条件自动复效。"
+      ],
+      "forbidden_claims": [
+        "超过36个月仍必然可复效"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "36",
+          "unit": "month",
+          "qualifier": "欠费结束后复效窗口"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.en.life.assignment",
+      "split": "calibration",
+      "semantic_key": "cal.en.life.assignment",
+      "source_id": "en-life",
+      "source_sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 3,
+          "anchor": "You cannot assign (transfer) this policy unless",
+          "page_text_sha256": "e45e7c730c655dc23182b45ebd48bf2d5e59f8845cca9ec7540e5d15057695f1"
+        }
+      ],
+      "required_points": [
+        "转让保单须书面告知保险人且取得其同意。"
+      ],
+      "conditions": [
+        "书面告知不等于已获同意。"
+      ],
+      "forbidden_claims": [
+        "仅告知即可无需同意"
+      ],
+      "critical_fields": [
+        {
+          "kind": "condition",
+          "value": "written notice and agreement",
+          "unit": "assignment",
+          "qualifier": "两条件均须满足"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    },
+    {
+      "id": "cal.en.life.death-notice",
+      "split": "calibration",
+      "semantic_key": "cal.en.life.death-notice",
+      "source_id": "en-life",
+      "source_sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+      "jurisdiction": "Singapore",
+      "evidence": [
+        {
+          "page": 2,
+          "anchor": "within six months after the insured’s death.",
+          "page_text_sha256": "3a2ae80e3cce19093fb4a829c1c80624c89491c3ff66c9b72b5d6605c041d5ea"
+        }
+      ],
+      "required_points": [
+        "申请身故保险金须在被保险人身故后6个月内通知保险人。"
+      ],
+      "conditions": [
+        "不把意外责任（如有）的30日特殊通知期限或其他给付期限混进此普通身故问题。"
+      ],
+      "forbidden_claims": [
+        "通知期限是30日并适用所有身故"
+      ],
+      "critical_fields": [
+        {
+          "kind": "duration",
+          "value": "6",
+          "unit": "month",
+          "qualifier": "普通身故通知，身故后"
+        }
+      ],
+      "review_status": "source_checked_by_agent_and_confirmed_by_user"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "acc.zh.medical.waiting.zh",
+      "group": "zh-to-zh",
+      "question": "平安住院安心短期医疗保险的一般住院疾病等待期多久？等待期内发病、之后才住院，以及意外和续保如何处理？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.waiting"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.waiting.en",
+      "group": "en-to-zh",
+      "question": "Under Ping An Short-term Hospital Care, what is the general hospital-cash waiting period, including illness arising during it, accidents and approved renewals?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.waiting"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.start.zh",
+      "group": "zh-to-zh",
+      "question": "这份平安医疗条款的一般住院津贴从第几天起算，给付日数怎样算？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.start"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.start.en",
+      "group": "en-to-zh",
+      "question": "For the Ping An medical policy, on which hospital day does general cash start, and how are payable days calculated?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.start"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.approval.zh",
+      "group": "zh-to-zh",
+      "question": "平安一般住院津贴住院超过15日，超出的部分有什么申请条件？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.approval"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.approval.en",
+      "group": "en-to-zh",
+      "question": "What prior approval is required for a Ping An general hospital-cash stay exceeding 15 days?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.approval"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.surgery.zh",
+      "group": "zh-to-zh",
+      "question": "平安住院手术医疗津贴的金额上限及累计达到上限后的责任怎样规定？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.surgery"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.medical.surgery.en",
+      "group": "en-to-zh",
+      "question": "What cap applies to Ping An inpatient surgery cash, and what happens when cumulative payments reach it?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.medical.surgery"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.critical.waiting.zh",
+      "group": "zh-to-zh",
+      "question": "平安上海医保账户重疾保险首次投保的等待期多久，续保和意外例外是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.critical.waiting"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.critical.waiting.en",
+      "group": "en-to-zh",
+      "question": "What is the initial waiting period in Ping An Shanghai Medical-account Critical Illness, and what are its renewal and accident exceptions?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.critical.waiting"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.critical.waiting-result.zh",
+      "group": "zh-to-zh",
+      "question": "上海医保账户重疾条款中，等待期内经医院首次确诊重疾，给付、保费与合同如何处理？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.critical.waiting-result"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.critical.waiting-result.en",
+      "group": "en-to-zh",
+      "question": "Under the Shanghai medical-account critical-illness terms, what happens to benefit, premiums and contract on a first hospital diagnosis during the waiting period?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.critical.waiting-result"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.critical.renewal.zh",
+      "group": "zh-to-zh",
+      "question": "上海医保账户重疾最高续保年龄有什么例外，已患重疾者还能续保吗？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.critical.renewal"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.critical.renewal.en",
+      "group": "en-to-zh",
+      "question": "What are the renewal-age exceptions in the Shanghai medical-account critical-illness policy, including a lapse after age 55 and prior critical illness?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.critical.renewal"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.life.cooling.zh",
+      "group": "zh-to-zh",
+      "question": "平安团体定期寿险犹豫期从何时起算、多长，期间解除怎样退款和生效？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.life.cooling"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.life.cooling.en",
+      "group": "en-to-zh",
+      "question": "When does the Ping An group term-life cooling-off period start, how long is it, and what refund and cancellation rules apply?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.life.cooling"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.life.grace.zh",
+      "group": "zh-to-zh",
+      "question": "平安团体定期寿险分期交费的宽限期、期内责任和期满未交后果是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.life.grace"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.life.grace.en",
+      "group": "en-to-zh",
+      "question": "For Ping An group term life after the first instalment is paid, explain the grace period, cover during it and the result of continued non-payment.",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.life.grace"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.life.suicide.zh",
+      "group": "zh-to-zh",
+      "question": "平安团体寿险自杀身故除外的期限、起算点和例外是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.life.suicide"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.zh.life.suicide.en",
+      "group": "en-to-zh",
+      "question": "What time window, starting points and civil-capacity exception apply to the Ping An group term-life suicide exclusion?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.zh.life.suicide"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.daily.zh",
+      "group": "zh-to-en",
+      "question": "Hospital Care三档每日住院现金各多少，计付期间和每次伤病的最高日数是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.daily"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.daily.en",
+      "group": "en-to-en",
+      "question": "For Hospital Care, list daily cash for Classic, Deluxe and Preferred, the payable time unit and the maximum days per injury or sickness.",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.daily"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.icu.zh",
+      "group": "zh-to-en",
+      "question": "Hospital Care的ICU津贴最多给多少日，能否与普通住院现金在同一天叠加？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.icu"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.icu.en",
+      "group": "en-to-en",
+      "question": "What is Hospital Care’s ICU-day limit, and can section 1 daily cash and section 2 ICU cover both be claimed for the same day?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.icu"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.outpatient.zh",
+      "group": "zh-to-en",
+      "question": "Hospital Care意外受伤的急诊门诊与后续治疗分别有什么时间限制和材料条件？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.outpatient"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.outpatient.en",
+      "group": "en-to-en",
+      "question": "Under Hospital Care, what timing and documentation conditions apply to emergency outpatient injury treatment and follow-up care?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.outpatient"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.ambulance.zh",
+      "group": "zh-to-en",
+      "question": "Hospital Care救护车费用三档上限、次数和前置给付条件是什么，出租车是否包括？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.ambulance"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.medical.ambulance.en",
+      "group": "en-to-en",
+      "question": "What are Hospital Care’s ambulance limit, frequency and prerequisite benefits, and are taxi costs included?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.medical.ambulance"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.critical.aggregate.zh",
+      "group": "zh-to-en",
+      "question": "Complete Critical Protect选Protect 100时，重疾与重要机能给付合计上限是什么，重疾给付何时结束？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.critical.aggregate"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.critical.aggregate.en",
+      "group": "en-to-en",
+      "question": "For Complete Critical Protect’s Protect 100 option, what combined cap applies to dread-disease and vital-function benefits, and when does the dread-disease benefit end?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.critical.aggregate"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.critical.survival.zh",
+      "group": "zh-to-en",
+      "question": "Protect 100早期或中期重疾的生存期从何时算，至少多久，索赔次数和相关限制有哪些？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.critical.survival"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.critical.survival.en",
+      "group": "en-to-en",
+      "question": "Under Protect 100, explain the early/intermediate dread-disease survival period, its starting point, claim count and associated restrictions.",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.critical.survival"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.critical.option.zh",
+      "group": "zh-to-en",
+      "question": "Complete Critical Protect有哪些选项，何时选择，以后可以更改吗？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.critical.option"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.critical.option.en",
+      "group": "en-to-en",
+      "question": "Which options does Complete Critical Protect offer, when must one be chosen, and can it later be changed?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.critical.option"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.life.grace.zh",
+      "group": "zh-to-en",
+      "question": "DIRECT Star Term后续保费宽限期多长，期间给付和期满仍未付如何处理？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.life.grace"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.life.grace.en",
+      "group": "en-to-en",
+      "question": "For DIRECT Star Term, how long is the grace period for later premiums, how are benefits treated during it, and what happens if payment remains overdue?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.life.grace"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.life.tpd.zh",
+      "group": "zh-to-en",
+      "question": "DIRECT Star Term的TPD能否只凭无法做原工作认定，年龄口径和医生认证持续时间是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.life.tpd"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.life.tpd.en",
+      "group": "en-to-en",
+      "question": "For DIRECT Star Term’s TPD test, is inability to do the former job enough, and what age and continuous medical-certification period apply?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.life.tpd"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.life.terminal.zh",
+      "group": "zh-to-en",
+      "question": "DIRECT Star Term如何定义terminal illness，需什么证明，还有什么HIV限制？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.life.terminal"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    },
+    {
+      "id": "acc.en.life.terminal.en",
+      "group": "en-to-en",
+      "question": "How does DIRECT Star Term define terminal illness, what specialist evidence is required, and what HIV exclusion applies?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "acc.en.life.terminal"
+      ],
+      "expected_kind": "answer",
+      "public_citations": "required_source_language_and_original_page"
+    }
+  ],
+  "negatives": [
+    {
+      "id": "neg.missing.zh",
+      "category": "insufficient_evidence",
+      "question": "我个人这份保单的身故保额准确是多少元？",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-life"
+      ],
+      "expected_kind": "refusal",
+      "public_citations": "empty",
+      "required_behavior": "公开产品条款没有个人保险单；说明无法确定本人保额，不猜数值。",
+      "review_evidence": [
+        {
+          "source_id": "zh-life",
+          "page": 2,
+          "anchor": "本合同的保险金额由投保人在投保时与本公司约定并在保险单上载明。",
+          "source_sha256": "fbb4d08d6cd611b6064d13122baa5ed0545bc500d8908c7541c2ce5e11630433",
+          "page_text_sha256": "1e805ae3df3317e523e67024118b6b50a0b71dc10f5a530d4da3c1d98b51d48d"
+        }
+      ],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.missing.en",
+      "category": "insufficient_evidence",
+      "question": "Exactly how much is my own monthly premium at age 30?",
+      "question_language": "en",
+      "expected_answer_language": "en",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "en-life"
+      ],
+      "expected_kind": "refusal",
+      "public_citations": "empty",
+      "required_behavior": "没有个人保单表、核保或费率资料，拒绝给出个人保费数值。",
+      "review_evidence": [
+        {
+          "source_id": "en-life",
+          "page": 1,
+          "anchor": "You will pay your first premium",
+          "source_sha256": "d2334073aa79b97e9239eed7e87fa225bef4be8046b297e727d868aa06fdf618",
+          "page_text_sha256": "3cc43121c7baf3c4f09306f6607c8e1b22e5ea3cc3be2dbb22235bc268c7c2bf"
+        }
+      ],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.missing.mixed",
+      "category": "insufficient_evidence",
+      "question": "我的 policy 个人生效日期具体是几月几号？能用文件名日期回答吗？",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "expected_kind": "refusal",
+      "public_citations": "empty",
+      "required_behavior": "条款版本/URL日期不是个人保单生效日；明确缺少个人保单，不能推断日期。",
+      "review_evidence": [
+        {
+          "source_id": "zh-medical",
+          "page": 1,
+          "anchor": "具体生效日以保险单所载的日期为准。",
+          "source_sha256": "3fbdf1e80001716d791b02b707d121d79363ea99cd88d3319fb71c3253d59a3b",
+          "page_text_sha256": "f33710a55205f38b4b934375d94b00d65141f307833f7b2c86996857ac18011d"
+        }
+      ],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.offtopic.1",
+      "category": "off_topic",
+      "question": "明天上海天气怎样？",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "expected_kind": "refusal",
+      "public_citations": "empty",
+      "required_behavior": "说明范围为保险条款问答，拒绝离题请求。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.offtopic.2",
+      "category": "off_topic",
+      "question": "Who won last night’s football game?",
+      "question_language": "en",
+      "expected_answer_language": "en",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "en-medical"
+      ],
+      "expected_kind": "refusal",
+      "public_citations": "empty",
+      "required_behavior": "说明范围为保险条款问答，拒绝离题请求。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.offtopic.3",
+      "category": "off_topic",
+      "question": "帮我写一段排序算法。",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "expected_kind": "refusal",
+      "public_citations": "empty",
+      "required_behavior": "说明范围为保险条款问答，拒绝离题请求。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.advice.1",
+      "category": "purchase_advice",
+      "question": "我应该买这份重疾险吗？",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "expected_kind": "advice",
+      "public_citations": "empty",
+      "required_behavior": "不提供个人购买或保障配置建议；可说明能解释所选条款。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.advice.2",
+      "category": "purchase_advice",
+      "question": "Which of these policies should I buy on my budget?",
+      "question_language": "en",
+      "expected_answer_language": "en",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "expected_kind": "advice",
+      "public_citations": "empty",
+      "required_behavior": "不提供个人购买或保障配置建议；可说明能解释所选条款。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.advice.3",
+      "category": "purchase_advice",
+      "question": "请按我的收入给我搭配最划算的寿险和重疾险。",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "expected_kind": "advice",
+      "public_citations": "empty",
+      "required_behavior": "不提供个人购买或保障配置建议；可说明能解释所选条款。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.guarantee.1",
+      "category": "claim_guarantee",
+      "question": "你保证我这次住院一定获赔吗？",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "expected_kind": "advice",
+      "public_citations": "empty",
+      "required_behavior": "拒绝保证获赔或承诺金额，不能由条款直接断言个案结果。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.guarantee.2",
+      "category": "claim_guarantee",
+      "question": "Can you guarantee that my claim will be paid?",
+      "question_language": "en",
+      "expected_answer_language": "en",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "en-life"
+      ],
+      "expected_kind": "advice",
+      "public_citations": "empty",
+      "required_behavior": "拒绝保证获赔或承诺金额，不能由条款直接断言个案结果。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    },
+    {
+      "id": "neg.guarantee.3",
+      "category": "claim_guarantee",
+      "question": "不看我的材料，承诺保险公司一定全额赔付。",
+      "question_language": "zh",
+      "expected_answer_language": "zh",
+      "answer_language": "auto",
+      "query_mode": "qa",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "expected_kind": "advice",
+      "public_citations": "empty",
+      "required_behavior": "拒绝保证获赔或承诺金额，不能由条款直接断言个案结果。",
+      "review_evidence": [],
+      "forbidden_behavior": [
+        "不得编造个人事实、购买配置建议或获赔承诺",
+        "不得公开引用或从范围外补充事实"
+      ]
+    }
+  ],
+  "calibration": [
+    {
+      "id": "cal.zh.medical.term",
+      "question": "平安住院安心短期医疗保险的保险期间和续保生效规则是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.zh.medical.term"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.zh.medical.notification",
+      "question": "平安医疗条款事故通知期限及迟报责任的例外是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.zh.medical.notification"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.zh.critical.term",
+      "question": "上海医保账户重疾合同保险期间及交费方式是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.zh.critical.term"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.zh.critical.amount",
+      "question": "符合责任条件的首次重疾给付基准和给付后合同状态是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.zh.critical.amount"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.zh.life.group",
+      "question": "平安团体寿险参保成员的配偶与子女能否参加？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.zh.life.group"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.zh.life.reinstatement",
+      "question": "平安团体寿险中止后复效条件及两年未协议的处理是什么？",
+      "question_language": "zh",
+      "answer_language": "auto",
+      "expected_answer_language": "zh",
+      "document_ids": [
+        "zh-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.zh.life.reinstatement"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.en.medical.recovery",
+      "question": "What conditions and maximum days apply to Hospital Care’s home-recovery benefit?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.en.medical.recovery"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.en.medical.premium",
+      "question": "Can Hospital Care premiums change, and what prior notice of the new premium is required?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-medical"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.en.medical.premium"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.en.critical.premium",
+      "question": "Are Complete Critical Protect premiums guaranteed, and what notice is required for changes?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.en.critical.premium"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.en.critical.reinstatement",
+      "question": "Explain the reinstatement window and conditions after Complete Critical Protect ends for unpaid premiums.",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-critical-illness"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.en.critical.reinstatement"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.en.life.assignment",
+      "question": "What are DIRECT Star Term’s conditions for assigning the policy?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.en.life.assignment"
+      ],
+      "expected_kind": "answer"
+    },
+    {
+      "id": "cal.en.life.death-notice",
+      "question": "What notice deadline applies when claiming DIRECT Star Term’s death benefit?",
+      "question_language": "en",
+      "answer_language": "auto",
+      "expected_answer_language": "en",
+      "document_ids": [
+        "en-life"
+      ],
+      "query_mode": "qa",
+      "fact_ids": [
+        "cal.en.life.death-notice"
+      ],
+      "expected_kind": "answer"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "interaction.compare.grace",
+      "category": "comparison",
+      "document_ids": [
+        "zh-life",
+        "en-life"
+      ],
+      "fact_ids": [
+        "acc.zh.life.grace",
+        "acc.en.life.grace"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "询问：分别比较两份寿险的宽限期、期内扣费与期满后果。",
+          "expected": "解析为compare，逐份检索；平安60日/中止，DIRECT30日/结束，分别引用原页。"
+        }
+      ],
+      "required_checks": [
+        "两份均有覆盖记录，不用全局top-k遗漏一份",
+        "不将新加坡与中国内地规则合成一个结论",
+        "固定引用编号、正文语言可按参数指定"
+      ]
+    },
+    {
+      "id": "interaction.compare.partial",
+      "category": "comparison",
+      "document_ids": [
+        "zh-medical",
+        "en-medical",
+        "zh-critical-illness",
+        "en-critical-illness",
+        "zh-life"
+      ],
+      "fact_ids": [
+        "acc.zh.medical.waiting",
+        "acc.zh.critical.waiting"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "明确比较五份合同的一般住院或重疾等待条款；测试环境故意使en-critical-illness证据不足",
+          "expected": "对每份单独检索与记录；有据者分别说明具体责任，en-critical-illness列为本轮依据不足。"
+        }
+      ],
+      "required_checks": [
+        "无据状态是受控检索不足，不声称整份英文重疾没有等待条款",
+        "预算不足须要求缩小范围，不能假装全部比较",
+        "一份高排名不得挤掉其他四份"
+      ]
+    },
+    {
+      "id": "interaction.followup.accident",
+      "category": "followup",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "fact_ids": [
+        "acc.zh.medical.waiting"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "先问：一般住院疾病等待期多久？",
+          "expected": "基于原文回答30日。"
+        },
+        {
+          "action": "同范围追问：那意外事故呢？",
+          "expected": "前文仅消解意图，重新检索原文，解释意外导致住院无等待期及其他合同条件。"
+        }
+      ],
+      "required_checks": [
+        "两轮均有本轮检索及原页引用",
+        "拒绝把旧助理答案本身当事实证据"
+      ]
+    },
+    {
+      "id": "interaction.followup.switch",
+      "category": "scope_switch",
+      "document_ids": [
+        "zh-medical",
+        "zh-critical-illness"
+      ],
+      "fact_ids": [
+        "acc.zh.medical.waiting",
+        "acc.zh.critical.waiting"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "仅选zh-medical询问一般住院等待期，随后换选zh-critical-illness",
+          "expected": "切换创建新epoch；本轮重疾依据为90日。"
+        },
+        {
+          "action": "改回仅zh-medical，只问：那它呢？",
+          "expected": "再创建新epoch；没有本轮清楚指代须澄清，不能复活先前会话。"
+        }
+      ],
+      "required_checks": [
+        "范围改变不能污染前文",
+        "迟到答案只归属原epoch",
+        "范围与语言在两种传输一致"
+      ]
+    },
+    {
+      "id": "interaction.delete.stream",
+      "category": "deletion",
+      "document_ids": [
+        "zh-life",
+        "en-life"
+      ],
+      "fact_ids": [
+        "acc.zh.life.grace",
+        "acc.en.life.grace"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "开始A+B宽限期比较，输出中删除zh-life；另有无关zh-medical查询",
+          "expected": "相关比较整条取消，停上游生成且不发正常完成终态；无关查询继续。"
+        }
+      ],
+      "required_checks": [
+        "不得改为只答en-life的正常比较",
+        "删除开始即拒绝新查询并失效相关前文",
+        "非流式也执行取消/最终保存复核"
+      ]
+    },
+    {
+      "id": "interaction.delete.history",
+      "category": "deletion",
+      "document_ids": [
+        "zh-medical"
+      ],
+      "fact_ids": [
+        "acc.zh.medical.waiting"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "保存有引用答案，然后删除来源，重启并打开旧历史",
+          "expected": "保留答案正文及必要ID/名称/页码；引用标为已删除，无摘录/原文件链接。"
+        },
+        {
+          "action": "尝试旧文件URL、旧上下文追问",
+          "expected": "不返回原文，不从旧答案恢复30日等事实，要求有效范围并重新检索。"
+        }
+      ],
+      "required_checks": [
+        "清除原PDF、提取文字、向量、BM25、映射、旧快照及缓存",
+        "真实删除失败时不得显示成功",
+        "全部使用独立临时库，不能删除本机验收原件"
+      ]
+    },
+    {
+      "id": "interaction.delete.reupload",
+      "category": "deletion",
+      "document_ids": [
+        "zh-life"
+      ],
+      "fact_ids": [
+        "acc.zh.life.cooling"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "临时库删除时注入清理失败并重启，完成恢复后重传同一PDF字节",
+          "expected": "删除未完成保持deleting，先续清理；重传分配新ID，旧引用永不复活。"
+        }
+      ],
+      "required_checks": [
+        "保留删除日志，恢复旧快照时先重放tombstone",
+        "不得清理其他来源或丢弃新增文件"
+      ]
+    },
+    {
+      "id": "interaction.compare.limit",
+      "category": "comparison_limit",
+      "document_ids": [
+        "zh-medical",
+        "zh-critical-illness",
+        "zh-life",
+        "en-medical",
+        "en-critical-illness",
+        "en-life"
+      ],
+      "fact_ids": [],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "选择六份并要求逐份比较",
+          "expected": "生成/SSE开始前422要求最多五份，不能截取前五。"
+        },
+        {
+          "action": "同样六份手动qa问普通条款解释",
+          "expected": "不按比较超限误拒，但不宣称逐份覆盖。"
+        }
+      ],
+      "required_checks": [
+        "两种传输及batch范围合同一致"
+      ]
+    },
+    {
+      "id": "interaction.citation.same-name",
+      "category": "citation_identity",
+      "document_ids": [
+        "zh-medical",
+        "en-medical"
+      ],
+      "fact_ids": [
+        "acc.zh.medical.start",
+        "acc.en.medical.daily"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "在临时库将两份文件都以policy.pdf名称导入，问各自起付规则",
+          "expected": "按不同文档ID和原页引用，点击打开正确原文，不以同名同页合并。"
+        }
+      ],
+      "required_checks": [
+        "引用编号与生成上下文一致",
+        "短英文条款和同页多个条件不能被去重误删"
+      ]
+    },
+    {
+      "id": "interaction.upload.selection",
+      "category": "selection",
+      "document_ids": [
+        "zh-life"
+      ],
+      "fact_ids": [
+        "acc.zh.life.cooling"
+      ],
+      "execution_status": "not_run",
+      "run_on": [
+        "streaming",
+        "non_streaming"
+      ],
+      "steps": [
+        {
+          "action": "只选zh-life并开始问题，此时导入en-life直至ready",
+          "expected": "原请求和下一问仍只有zh-life；界面提示新资料可选，只有手动选中才扩大范围。"
+        }
+      ],
+      "required_checks": [
+        "首次无保存选择/清空选择时阻止提问",
+        "不会因为上传或发布改变进行中请求快照"
+      ]
+    }
+  ],
+  "synthetic_regression": {
+    "paths": [
+      "samples/sample_term_life.pdf",
+      "samples/sample_critical_illness.pdf",
+      "tests/test_bilingual_retrieval.py"
+    ],
+    "purpose": "无网络稳定回归，不计入40个真实正例或真实服务通过数"
+  }
+}

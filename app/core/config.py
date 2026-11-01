@@ -3,7 +3,7 @@
 使用Pydantic Settings进行环境变量管理
 """
 
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from pathlib import Path
@@ -23,28 +23,45 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8766, description="服务器端口")
     RELOAD: bool = Field(default=True, description="自动重载")
 
-    # OpenAI-compatible provider（优先 new-api / 任意 OpenAI 兼容网关）
-    OPENAI_API_KEY: str = Field(default="", description="OpenAI-compatible API 密钥")
+    # 本地向量化与生成 API 分别配置，互不借用参数或凭据。
+    LOCAL_EMBEDDING_MODEL: str = Field(default="BAAI/bge-m3", description="本地模型 ID 或目录")
+    LOCAL_EMBEDDING_REVISION: str = Field(default="", description="固定模型 revision，建议 commit SHA")
+    LOCAL_EMBEDDING_CACHE_DIR: str = Field(default="./data/models", description="模型缓存目录")
+    LOCAL_EMBEDDING_DEVICE: str = Field(default="auto", description="auto/cpu/cuda/cuda:N")
+    LOCAL_EMBEDDING_BATCH_SIZE: int = Field(default=32, ge=1, description="本地编码批大小")
+    LOCAL_EMBEDDING_MAX_BATCH_RETRIES: int = Field(default=3, ge=0, le=10, description="GPU OOM 减小批次次数上限")
+    LOCAL_EMBEDDING_MAX_INPUT_TOKENS: int = Field(default=512, ge=1, description="含前缀/特殊 token 的编码输入上限")
+    LOCAL_EMBEDDING_TEXT_NORMALIZATION: Literal["preserve", "NFKC"] = "preserve"
+    LOCAL_EMBEDDING_QUERY_PREFIX: str = ""
+    LOCAL_EMBEDDING_DOCUMENT_PREFIX: str = ""
+    LOCAL_EMBEDDING_NORMALIZE: bool = True
+    EMBEDDING_DISTANCE: Literal["cosine"] = "cosine"
+
+    GENERATION_API_BASE_URL: Optional[str] = Field(default=None, repr=False)
+    GENERATION_API_KEY: Optional[str] = Field(default=None, repr=False)
+    GENERATION_MODEL: Optional[str] = None
+
+    # 旧生成配置别名；新字段为 None 时才回退，显式空值不回退。
+    OPENAI_API_KEY: str = Field(default="", repr=False, description="旧生成 API 密钥别名")
     OPENAI_BASE_URL: str = Field(
-        default="http://127.0.0.1:31876/v1",
+        default="", repr=False,
         description="OpenAI-compatible API 基础 URL",
     )
-    OPENAI_MODEL: str = Field(default="gpt-5.4", description="OpenAI模型（兼容旧字段）")
-    OPENAI_MODEL_LIGHT: str = Field(default="gpt-5.4", description="轻量任务模型（意图/重写/路由）")
-    OPENAI_MODEL_CORE: str = Field(default="gpt-5.4", description="核心生成模型（答案生成/摘要）")
-    # Prefer real local HF embedding when available; fall back to local:hash offline.
-    # Clash/proxy may be required once to download; thereafter uses HF hub cache.
+    OPENAI_MODEL: str = Field(default="", description="旧生成模型别名")
+    OPENAI_MODEL_LIGHT: str = Field(default="", description="旧轻量生成模型别名")
+    OPENAI_MODEL_CORE: str = Field(default="", description="旧核心生成模型别名")
+    # 仅接纳旧 .env 字段；实际向量化只读取 LOCAL_EMBEDDING_*。
     OPENAI_EMBEDDING_MODEL: str = Field(
-        default="hf:BAAI/bge-small-zh-v1.5",
-        description="嵌入模型：hf:<name> 本地 sentence-transformers；local:hash 离线哈希回退",
+        default="",
+        description="已停用，请使用 LOCAL_EMBEDDING_MODEL",
     )
     OPENAI_MAX_TOKENS: int = Field(default=1000, description="最大令牌数")
     OPENAI_TEMPERATURE: float = Field(default=0.2, description="温度参数")
-    OPENAI_TIMEOUT_SECS: int = Field(default=90, description="LLM客户端超时（秒）")
+    OPENAI_TIMEOUT_SECS: int = Field(default=90, ge=1, le=3600, description="LLM客户端超时（秒）")
 
     # 硅基流动配置（兼容回退；演示默认清空以免误走）
-    SILICONFLOW_API_KEY: str = Field(default="", description="硅基流动API密钥（可选回退）")
-    SILICONFLOW_BASE_URL: str = Field(default="", description="硅基流动API基础URL（可选回退）")
+    SILICONFLOW_API_KEY: str = Field(default="", repr=False, description="旧生成密钥别名")
+    SILICONFLOW_BASE_URL: str = Field(default="", repr=False, description="旧生成地址别名")
     SILICONFLOW_MODEL: str = Field(default="", description="硅基流动模型（可选回退）")
 
     # 向量数据库配置
@@ -73,10 +90,9 @@ class Settings(BaseSettings):
 
     # 查询配置
     MAX_RETRIEVED_CHUNKS: int = Field(default=8, description="最大检索块数")
-    # bge-small-zh cosine typically ~0.45–0.75 on-topic; hash embeds need much lower.
     SIMILARITY_THRESHOLD: float = Field(
-        default=0.32,
-        description="相似度阈值（bge 真向量建议 0.30–0.40；local:hash 可降到 0.05）",
+        default=0.32, ge=0, le=1, allow_inf_nan=False,
+        description="cosine 证据门槛；须按真实本地模型/语料校准，不是回答正确概率",
     )
 
     # 查询重写与路由配置（主演示默认关闭）
@@ -116,10 +132,10 @@ class Settings(BaseSettings):
 
     # LLM 并发与可靠性控制
     LLM_MAX_CONCURRENCY: int = Field(default=20, description="LLM 并发限制（全局Semaphore）")
-    LLM_MAX_RETRIES: int = Field(default=3, description="LLM 最大重试次数（含初次调用）")
-    LLM_BACKOFF_BASE: float = Field(default=0.25, description="LLM 退避基准秒")
-    LLM_BACKOFF_FACTOR: float = Field(default=2.0, description="LLM 退避增长因子")
-    LLM_BACKOFF_MAX: float = Field(default=2.5, description="LLM 最大退避秒")
+    LLM_MAX_RETRIES: int = Field(default=3, ge=1, le=10, description="LLM 最大尝试次数（含初次调用）")
+    LLM_BACKOFF_BASE: float = Field(default=0.25, ge=0, le=60, description="LLM 退避基准秒")
+    LLM_BACKOFF_FACTOR: float = Field(default=2.0, ge=1, le=10, description="LLM 退避增长因子")
+    LLM_BACKOFF_MAX: float = Field(default=2.5, ge=0, le=60, description="LLM 最大退避秒")
     LLM_CIRCUIT_FAILURE_THRESHOLD: int = Field(default=10, description="LLM 熔断失败阈值")
     LLM_CIRCUIT_RESET_TIMEOUT: int = Field(default=30, description="LLM 熔断冷却秒")
     LLM_DAILY_TOKENS_LIMIT: int = Field(
@@ -140,18 +156,36 @@ class Settings(BaseSettings):
         # Windows .env often uses CRLF; strip CR so empty/async URLs stay valid.
         self._sanitize_string_fields()
         self._create_directories()
-        try:
-            if (self.OPENAI_MODEL_CORE or "").strip() == "":
-                self.OPENAI_MODEL_CORE = self.OPENAI_MODEL
-            if (self.OPENAI_MODEL_LIGHT or "").strip() == "":
-                self.OPENAI_MODEL_LIGHT = self.OPENAI_MODEL
-        except Exception:
-            pass
+
+    @property
+    def generation_api_key(self) -> str:
+        if self.GENERATION_API_KEY is not None:
+            return self.GENERATION_API_KEY
+        return self.OPENAI_API_KEY or self.SILICONFLOW_API_KEY
+
+    @property
+    def generation_api_base_url(self) -> str:
+        if self.GENERATION_API_BASE_URL is not None:
+            return self.GENERATION_API_BASE_URL
+        return self.OPENAI_BASE_URL or self.SILICONFLOW_BASE_URL
+
+    def generation_model(self, role: str = "core") -> str:
+        if self.GENERATION_MODEL is not None:
+            return self.GENERATION_MODEL
+        legacy_role = self.OPENAI_MODEL_LIGHT if role == "light" else self.OPENAI_MODEL_CORE
+        return legacy_role or self.OPENAI_MODEL or self.SILICONFLOW_MODEL
+
+    @property
+    def generation_configured(self) -> bool:
+        return bool(self.generation_api_base_url and self.generation_api_key
+                    and self.generation_model())
 
     def _sanitize_string_fields(self) -> None:
         for name, value in list(self.__dict__.items()):
             if isinstance(value, str):
-                cleaned = value.replace(chr(13), "").strip()
+                # Prefix spaces/newlines are part of the semantic input and fingerprint.
+                cleaned = (value if name in {"LOCAL_EMBEDDING_QUERY_PREFIX", "LOCAL_EMBEDDING_DOCUMENT_PREFIX"}
+                           else value.replace(chr(13), "").strip())
                 if cleaned != value:
                     object.__setattr__(self, name, cleaned)
 
