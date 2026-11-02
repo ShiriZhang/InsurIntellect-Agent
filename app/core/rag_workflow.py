@@ -96,62 +96,15 @@ class InsurIntellectAgent:
             except Exception:
                 self.intent_service = None
             
-            # 初始化向量数据库
-            try:
-                from app.core.chromadb_manager import chroma_manager
-                
-                # 使用单例管理器获取ChromaDB客户端
-                chroma_client = chroma_manager.get_client()
-                
-                self.vectorstore = Chroma(
-                    client=chroma_client,
-                    collection_name="insurance_documents",
-                    collection_metadata={"hnsw:space": settings.EMBEDDING_DISTANCE},
-                    embedding_function=self.embeddings,
-                    persist_directory=settings.CHROMA_PERSIST_DIRECTORY
-                )
-                
-                logger.info("向量数据库初始化完成: chroma（使用单例管理器）")
-                
-            except Exception as e:
-                logger.exception("向量数据库初始化失败")
-                raise
-            
-            # 创建检索器，设置初步检索数量
-            self.retriever = self.vectorstore.as_retriever(
-                search_kwargs={"k": settings.MAX_RETRIEVED_CHUNKS * 2}  # 初步检索更多文档供后续筛选
-            )
-            logger.info(f"ChromaDB检索器初始化成功,检索路径: {settings.CHROMA_PERSIST_DIRECTORY}")
-
-            # BM25 资源占位
+            # Only committed, fingerprinted resources may enter the normal path.
+            from app.services.index_coordinator import default_coordinator
+            self.embedding_service.preflight()
+            self.index_coordinator = default_coordinator()
+            self.index_coordinator.recover()
             self.bm25_index = None
             self.bm25_chunk_map = {}
             self.bm25_available = False
-
-            # 新增：加载并缓存监管文件，以便快速访问和后续AI判断参考
-            # 说明：优先使用向量库检索器的 get 能力，失败时回退到底层 Chroma collection
-            logger.info("正在加载并缓存监管文件...")
-            try:
-                # 假设数据库中，监管文件的元数据 document_type 被标记为 '监管文件'
-                self.regulatory_docs = self.retriever.vectorstore.get(
-                    where={"document_type": "监管文件"},
-                    include=["metadatas", "documents"]
-                )
-                count = len(self.regulatory_docs.get("documents", []) or [])
-                logger.info(f"已缓存 {count} 份监管文件。")
-            except Exception as e:
-                logger.warning(f"通过检索器缓存监管文件失败，尝试底层collection: {e}")
-                try:
-                    # 回退到底层 chroma collection
-                    self.regulatory_docs = self.vectorstore._collection.get(
-                        where={"document_type": "监管文件"},
-                        include=["metadatas", "documents"]
-                    )
-                    count = len(self.regulatory_docs.get("documents", []) or [])
-                    logger.info(f"已缓存 {count} 份监管文件（底层collection）。")
-                except Exception as e2:
-                    logger.warning(f"缓存监管文件失败: {e2}")
-                    self.regulatory_docs = {}
+            self.regulatory_docs = {}
 
             # 最近一次运行的检索与排序详情（用于审计与持久化）
             self.last_run: Dict[str, Any] = {}
@@ -275,7 +228,7 @@ class InsurIntellectAgent:
                 "error": f"执行错误: {str(e)}"
             }
             
-    async def abuild_context(self, user_query: str) -> Dict[str, Any]:
+    async def abuild_context(self, user_query: str, document_ids=None) -> Dict[str, Any]:
         """
         异步版本：构建 RAG 上下文（不生成最终答案）。
 
@@ -287,6 +240,8 @@ class InsurIntellectAgent:
           "retrieved_chunks": list,
         }
         """
+        if hasattr(self, "index_coordinator"):
+            return await self._published_context(user_query, document_ids)
         try:
             # 步骤1：查询架构师重写查询（遵循配置，必要时启用微超时）
             if not settings.ENABLE_QUERY_REWRITING:
@@ -533,6 +488,29 @@ class InsurIntellectAgent:
             logger.exception("(async) 构建上下文失败")
             self.last_run = {"rewritten_query": user_query, "retrieved_chunks": []}
             return {"rewritten_query": user_query, "context": "", "retrieved_chunks": []}
+
+    async def _published_context(self, user_query, document_ids):
+        coordinator = self.index_coordinator
+        # API-level explicit-scope validation is task 5. Capture this compatibility
+        # scope once; publication while encoding cannot enlarge an accepted request.
+        ids = document_ids if document_ids is not None else await asyncio.to_thread(coordinator.ready_ids)
+        if not ids:
+            return {"rewritten_query": user_query, "context": "", "retrieved_chunks": []}
+        profile = self.embedding_service.embedding_profile().to_record()
+        view = await asyncio.to_thread(coordinator.open_view, ids, profile)
+        try:
+            vector = await self.embedding_service.aembed_query(user_query)
+            chunks = await asyncio.to_thread(view.search, user_query, vector, top_k=settings.MAX_RETRIEVED_CHUNKS)
+            view.assert_valid()
+            self.last_run = {"index_commit_id": view.commit_id, "document_ids": view.document_ids,
+                             "chunk_ids": [chunk["chunk_id"] for chunk in chunks]}
+            return {"rewritten_query": user_query,
+                    "context": "\n\n".join(f"[{i}] {c['document_name']} p.{c['page_number']}\n{c['content']}"
+                                             for i, c in enumerate(chunks, 1)),
+                    "retrieved_chunks": chunks, "index_commit_id": view.commit_id, "_index_view": view}
+        except BaseException:
+            view.close()
+            raise
 
     def set_bm25_resources(self, index_payload: Any, chunk_map: Dict[str, str]) -> None:
         try:

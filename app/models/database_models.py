@@ -158,6 +158,12 @@ class IndexCommit(Base):
     document_attempts_json = Column(Text, nullable=False)
     vector_collection = Column(String(256), nullable=False)
     snapshot_path = Column(String(1024), nullable=False)
+    snapshot_sha256 = Column(String(64), nullable=True)
+    embedding_profile_json = Column(Text, nullable=True)
+    vector_root = Column(String(1024), nullable=True)
+    processed_root = Column(String(1024), nullable=True)
+    library_id = Column(String(64), nullable=True)
+    retired = Column(Boolean, nullable=False, default=False, server_default="0")
     created_time = Column(DateTime, default=datetime.utcnow)
     __table_args__ = {"sqlite_autoincrement": True}
 

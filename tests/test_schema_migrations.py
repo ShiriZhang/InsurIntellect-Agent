@@ -23,7 +23,7 @@ def test_legacy_schema_migrates_without_inventing_readiness_or_scope(tmp_path):
         conn.exec_driver_sql("INSERT INTO document_chunks VALUES (1, 7, 'keep source')")
         migrate_schema(conn)
         migrate_schema(conn)
-        assert conn.execute(text("SELECT count(*) FROM schema_migrations")).scalar() == 2
+        assert conn.execute(text("SELECT count(*) FROM schema_migrations")).scalar() == 3
         assert "deletion_tasks" in inspect(conn).get_table_names()
     with Session(engine) as db:
         doc = db.get(Document, 7)
@@ -49,7 +49,7 @@ def test_startup_and_history_compatibility_entry_points(tmp_path, monkeypatch):
         await database.init_db()
         async with async_sessionmaker(engine)() as db:
             await ensure_query_history_columns(db)
-            assert (await db.execute(text("SELECT count(*) FROM schema_migrations"))).scalar() == 2
+            assert (await db.execute(text("SELECT count(*) FROM schema_migrations"))).scalar() == 3
         await engine.dispose()
     asyncio.run(scenario())
 
@@ -84,7 +84,7 @@ def test_version_one_database_receives_candidate_checkpoint_columns(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'version-one.db'}")
     with engine.begin() as conn:
         migrate_schema(conn)
-        conn.exec_driver_sql("DELETE FROM schema_migrations WHERE version = 2")
+        conn.exec_driver_sql("DELETE FROM schema_migrations WHERE version >= 2")
         for name in ("embedding_json", "context_before", "source_start", "source_end"):
             conn.exec_driver_sql(f"ALTER TABLE document_chunks DROP COLUMN {name}")
         for name in ("embedding_profile_json", "diagnostics_json", "expected_chunks"):
@@ -98,3 +98,65 @@ def test_version_one_database_receives_candidate_checkpoint_columns(tmp_path):
         assert db.get(Document, 10).filename == 'keep.pdf'
         assert not db.get(Document, 10).is_queryable
     engine.dispose()
+
+
+def test_version_two_commit_without_fingerprint_resources_is_not_adopted(tmp_path):
+    from app.models.database_models import IndexCommit, IndexPointer
+    from app.services.index_coordinator import IndexCoordinator, IndexUnavailable
+    import pytest
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'version-two.db'}")
+    with engine.begin() as conn:
+        migrate_schema(conn)
+        conn.exec_driver_sql("DELETE FROM schema_migrations WHERE version = 3")
+        for name in ('snapshot_sha256', 'embedding_profile_json', 'vector_root', 'processed_root', 'library_id', 'retired'):
+            conn.exec_driver_sql(f"ALTER TABLE index_commits DROP COLUMN {name}")
+        conn.exec_driver_sql("INSERT INTO index_commits(id, embedding_fingerprint, document_attempts_json, vector_collection, snapshot_path) "
+                             "VALUES (1, 'unverified', '[]', 'insurance_documents', 'legacy-manifest.json')")
+        conn.exec_driver_sql("INSERT INTO index_pointer(name, commit_id) VALUES ('current', 1)")
+        migrate_schema(conn)
+        migrate_schema(conn)
+    with Session(engine) as db:
+        assert db.get(IndexPointer, 'current').commit_id == 1
+        assert db.get(IndexCommit, 1).embedding_profile_json is None
+        assert db.get(IndexCommit, 1).retired is False
+    coordinator = IndexCoordinator(engine, vector_root=tmp_path / 'vectors', processed_root=tmp_path / 'processed')
+    with pytest.raises(IndexUnavailable):
+        coordinator.recover()
+    assert not coordinator.state.serving
+    engine.dispose()
+
+
+def test_concurrent_application_and_cli_upgrade_is_serialized(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier, BrokenBarrierError
+    from sqlalchemy import event
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'concurrent.db'}", connect_args={'timeout': 5})
+    with engine.begin() as conn:
+        migrate_schema(conn)
+        conn.exec_driver_sql('DELETE FROM schema_migrations WHERE version=3')
+        for name in ('snapshot_sha256', 'embedding_profile_json', 'vector_root', 'processed_root', 'library_id', 'retired'):
+            conn.exec_driver_sql(f'ALTER TABLE index_commits DROP COLUMN {name}')
+    # Old migration allows both callers to inspect missing columns before either
+    # ALTER. With a write reservation only one can reach this barrier, then the
+    # other inspects the fully upgraded schema and never attempts the same DDL.
+    both_altering = Barrier(2)
+    def interleave(connection, cursor, statement, parameters, context, executemany):
+        if statement.startswith('ALTER TABLE "index_commits" ADD COLUMN snapshot_sha256'):
+            try:
+                both_altering.wait(timeout=.2)
+            except BrokenBarrierError:
+                pass
+    event.listen(engine, 'before_cursor_execute', interleave)
+    def upgrade(_):
+        with engine.begin() as conn:
+            migrate_schema(conn)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(upgrade, range(2)))
+        with engine.connect() as conn:
+            assert list(conn.execute(text('SELECT version FROM schema_migrations ORDER BY version')).scalars()) == [1, 2, 3]
+    finally:
+        event.remove(engine, 'before_cursor_execute', interleave)
+        engine.dispose()

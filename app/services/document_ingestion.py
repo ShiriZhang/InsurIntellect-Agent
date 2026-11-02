@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.app_logging import get_logger
 from app.core.config import settings
 from app.core.schema_migrations import migrate_schema
-from app.models.database_models import Document, DocumentChunk, IngestionAttempt
+from app.models.database_models import DeletionTask, Document, DocumentChunk, IngestionAttempt
 from app.services.document_chunking import ChunkBudgetError, chunk_document
 from app.services.document_storage import DocumentStorage, SourceUnavailable
 from app.services.embedding_profile import EmbeddingCompatibilityError, file_digest
@@ -39,10 +39,12 @@ class IngestionInterrupted(RuntimeError):
 
 class DocumentIngestionService:
     def __init__(self, storage=None, *, embedding_factory=EmbeddingService, parser=parse_pdf,
-                 queue_size=None, batch_size=None):
+                 queue_size=None, batch_size=None, auto_publish=True, coordinator=None):
         self.storage = storage or DocumentStorage()
         self._owns_storage = storage is None
         self.engine = self.storage.engine
+        from app.services.index_coordinator import IndexCoordinator
+        self.coordinator = (coordinator or IndexCoordinator(self.engine)) if auto_publish else None
         self.embedding_factory, self.parser = embedding_factory, parser
         self.embedding = None
         self.batch_size = batch_size or settings.INGEST_BATCH_SIZE
@@ -86,7 +88,9 @@ class DocumentIngestionService:
             task = db.get(IngestionAttempt, (doc.id, doc.attempt))
             return {"document_id": doc.id, "attempt": doc.attempt,
                     "processing_status": doc.processing_status,
-                    "task_status": task.status if task else None, "ready": doc.is_queryable,
+                    "task_status": task.status if task else None,
+                    "ready": doc.is_queryable and db.get(DeletionTask, doc.id) is None
+                    and (self.coordinator is None or self.coordinator.state.serving),
                     "page_count": doc.page_count, "language": doc.language,
                     "error_code": doc.error_code, "error_pages": json.loads(doc.error_pages_json or "[]"),
                     "diagnostics": json.loads(task.diagnostics_json or "{}") if task else {}}
@@ -221,7 +225,7 @@ class DocumentIngestionService:
                 DocumentChunk.document_id == identity[0], DocumentChunk.attempt == identity[1]))
             if count != task.expected_chunks:
                 raise RuntimeError("candidate_incomplete")
-            task.status = "staged"  # Batch 4 publishes; preparation alone cannot mark ready.
+            task.status = "staged"  # Only the coordinator can publish this prepared candidate.
             task.diagnostics_json = json.dumps(embedding.diagnostics(), ensure_ascii=False)
 
     def _record_error(self, identity, code, pages=()):
@@ -239,6 +243,8 @@ class DocumentIngestionService:
 
     def process_next(self):
         """Worker-internal: caller must hold the service's OS lock."""
+        if self.coordinator is not None and self._publish_next():
+            return True
         try:
             while True:
                 self.notifications.get_nowait()
@@ -270,6 +276,34 @@ class DocumentIngestionService:
             self._record_error(identity, "ingestion_failed")
         return True
 
+    def _publish_next(self):
+        from app.services.index_coordinator import PublicationCommittedButUnavailable
+
+        if self._stop.is_set():
+            return False
+        with Session(self.engine) as db:
+            task = db.scalars(select(IngestionAttempt).where(IngestionAttempt.status == "staged")
+                              .order_by(IngestionAttempt.created_time, IngestionAttempt.document_id)).first()
+            if task is None:
+                return False
+            identity = task.document_id, task.attempt, task.deletion_epoch
+        try:
+            self._check(identity)
+            self.coordinator.publish(identity[0], identity[1], check_cancelled=lambda: self._check(identity))
+        except IngestionInterrupted:
+            return False  # Prepared candidate remains durable for the next worker.
+        except IngestionCancelled:
+            with self._transaction() as db:
+                task = db.get(IngestionAttempt, identity[:2])
+                if task is not None and task.status == "staged":
+                    task.status = "cancelled"
+        except PublicationCommittedButUnavailable:
+            raise  # Never rewrite a committed ready source as a failed attempt.
+        except Exception as exc:
+            logger.error("Index publication failed (%s)", type(exc).__name__)
+            self._record_error(identity, "index_publication_failed")
+        return True
+
     def run_until_idle(self):
         """CLI synchronous drain. An active application worker retains ownership."""
         if self._thread is not None and self._thread.is_alive():
@@ -277,6 +311,8 @@ class DocumentIngestionService:
         if not self.worker_lock.acquire():
             return False
         try:
+            if self.coordinator is not None:
+                self.coordinator.recover()
             self.recover()
             while not self._stop.is_set() and self.process_next():
                 pass
@@ -300,6 +336,8 @@ class DocumentIngestionService:
                     self._stop.wait(settings.INGEST_POLL_INTERVAL)
                     continue
                 try:
+                    if self.coordinator is not None:
+                        self.coordinator.recover()
                     self.recover()
                     while not self._stop.is_set():
                         if not self.process_next():

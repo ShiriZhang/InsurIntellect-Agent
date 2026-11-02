@@ -247,7 +247,7 @@ uv run python -m scripts.simple_ingest --pdf-dir samples
 
 样例为 **公开合成条款**（等待期、责任免除、犹豫期等），不是真实保单。
 
-共用入库服务目前将候选持久化为 `staged`，索引一致发布由 OpenSpec 第 4 批接入；准备成功尚不代表新 PDF 可提问。状态和操作见[入库与 CLI 说明](docs/document-ingestion.md)。`--reset` 会明确拒绝，以免清空其他文档。
+共用入库服务已接入版本化 Chroma/关键词一致发布。CLI 默认等待 `ready=true`，只入队或准备候选尚不足以提问。状态与操作见[入库与 CLI 说明](docs/document-ingestion.md)和[发布/恢复说明](docs/index-publication.md)。`--reset` 会明确拒绝，以免清空其他文档；索引 ready 不替代真实模型问答验收。
 
 ### 3. 一键演示服务
 

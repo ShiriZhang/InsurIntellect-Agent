@@ -19,7 +19,7 @@ def runtime(tmp_path):
     source.mkdir()
     engine = create_engine(f"sqlite:///{tmp_path / 'cli.db'}")
     service = DocumentIngestionService(DocumentStorage(engine, tmp_path / "originals"),
-                                       embedding_factory=LocalEncoderFake)
+                                       auto_publish=False, embedding_factory=LocalEncoderFake)
     service.initialize()
     yield service, source
     service.stop()

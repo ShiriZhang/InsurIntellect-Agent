@@ -16,8 +16,12 @@ def migrate_schema(connection):
         "CREATE TABLE IF NOT EXISTS schema_migrations "
         "(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
     ))
+    # Force SQLite to acquire its write reservation before deciding which DDL is
+    # missing. SQLAlchemy's begin() alone does not start a SQLite legacy-mode
+    # transaction for SELECT/DDL, so concurrent CLI/app starts could race ALTERs.
+    connection.execute(text("UPDATE schema_migrations SET version = version WHERE 0"))
     applied = set(connection.execute(text("SELECT version FROM schema_migrations")).scalars())
-    if 2 in applied:
+    if 3 in applied:
         return
     Base.metadata.create_all(connection)
     for table in Base.metadata.sorted_tables:
@@ -35,4 +39,6 @@ def migrate_schema(connection):
     )
     if 1 not in applied:
         connection.execute(text("INSERT INTO schema_migrations(version) VALUES (1)"))
-    connection.execute(text("INSERT INTO schema_migrations(version) VALUES (2)"))
+    if 2 not in applied:
+        connection.execute(text("INSERT INTO schema_migrations(version) VALUES (2)"))
+    connection.execute(text("INSERT INTO schema_migrations(version) VALUES (3)"))

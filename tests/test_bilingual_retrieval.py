@@ -314,7 +314,7 @@ def test_cli_ingestion_prepares_shared_source_text_without_legacy_publication(tm
     original = "AlphaCare-X2 等待期90天；生效日2026-10-25，非意外事故不予赔付。"
     make_pdf(source / "sample.pdf", ["", original])
     engine = create_engine(f"sqlite:///{tmp_path / 'cli.db'}")
-    service = DocumentIngestionService(DocumentStorage(engine, tmp_path / "pdfs"), embedding_factory=LocalEncoderFake)
+    service = DocumentIngestionService(DocumentStorage(engine, tmp_path / "pdfs"), auto_publish=False, embedding_factory=LocalEncoderFake)
     try:
         result = simple_ingest.ingest(source, service=service)
         assert result["prepared"] and not result["ready"]

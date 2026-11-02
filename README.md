@@ -247,7 +247,7 @@ uv run python -m scripts.simple_ingest --pdf-dir samples
 
 Samples are **public synthetic clauses** (waiting period, exclusions, free-look, etc.), not real policies.
 
-The shared ingestion service currently prepares durable candidates (`staged`), while index publication is scheduled for OpenSpec batch 4. Preparation does not yet make a new PDF queryable. See [ingestion and CLI states](docs/document-ingestion.md); `--reset` is rejected to protect other documents.
+The shared ingestion service now prepares and publishes versioned Chroma/keyword indexes. The CLI waits for `ready=true` by default; queuing or preparing a candidate alone is insufficient. See [ingestion and CLI states](docs/document-ingestion.md) and [publication/recovery](docs/index-publication.md). `--reset` is rejected to protect other documents; index readiness does not replace real-model QA acceptance.
 
 ### 3. One-command demo server
 

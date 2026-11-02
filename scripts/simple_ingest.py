@@ -43,7 +43,8 @@ def ingest(pdf_dir, *, service=None, wait=True, timeout=300):
             deadline = time.monotonic() + timeout
             while True:
                 statuses = [service.snapshot(item.document_id) for item in submitted]
-                if all(item["task_status"] in TERMINAL_ATTEMPTS for item in statuses):
+                terminal = TERMINAL_ATTEMPTS - {"staged"} if service.coordinator is not None else TERMINAL_ATTEMPTS
+                if all(item["task_status"] in terminal for item in statuses):
                     break
                 if time.monotonic() >= deadline:
                     timed_out = True
@@ -54,7 +55,8 @@ def ingest(pdf_dir, *, service=None, wait=True, timeout=300):
         statuses = [service.snapshot(item.document_id) for item in submitted]
         return {"documents": statuses, "timed_out": timed_out,
                 "prepared": all(item["task_status"] in {"staged", "ready"} for item in statuses),
-                "ready": all(item["ready"] for item in statuses), "waiting": wait}
+                "ready": all(item["ready"] for item in statuses), "waiting": wait,
+                "publication_enabled": service.coordinator is not None}
     finally:
         if started_here:
             service.stop()
@@ -76,7 +78,8 @@ def main(argv=None, *, service=None):
     except (ValueError, OSError) as exc:
         parser.exit(1, "ingest failed: " + type(exc).__name__ + "\n")
     print(json.dumps(result, ensure_ascii=False))
-    return 0 if args.no_wait or result["prepared"] else 1
+    completed = result["ready"] if result["publication_enabled"] else result["prepared"]
+    return 0 if args.no_wait or (completed and not result["timed_out"]) else 1
 
 
 if __name__ == "__main__":

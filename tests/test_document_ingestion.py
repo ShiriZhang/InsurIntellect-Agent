@@ -19,7 +19,7 @@ from test_pdf_quality import make_pdf
 def ingestion(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'ingestion.db'}", connect_args={"timeout": 10})
     service = DocumentIngestionService(DocumentStorage(engine, tmp_path / 'originals'),
-                                       embedding_factory=LocalEncoderFake, queue_size=1, batch_size=2)
+                                       auto_publish=False, embedding_factory=LocalEncoderFake, queue_size=1, batch_size=2)
     service.initialize()
     yield service
     service.stop()
@@ -65,7 +65,7 @@ def test_recovery_rebuilds_only_interrupted_attempt_and_preserves_identity(inges
         db.get(IngestionAttempt, (item.document_id, 1)).status = "indexing"
         db.get(Document, item.document_id).processing_status = "indexing"
         db.commit()
-    restarted = DocumentIngestionService(ingestion.storage, embedding_factory=LocalEncoderFake)
+    restarted = DocumentIngestionService(ingestion.storage, auto_publish=False, embedding_factory=LocalEncoderFake)
     assert restarted.run_until_idle()
     with Session(ingestion.engine) as db:
         assert list(db.scalars(select(DocumentChunk.vector_id))) == ids
@@ -149,7 +149,7 @@ def test_late_encoder_results_never_write_after_invalidation(ingestion, tmp_path
         release.set()
         ingestion.stop()
     if action == "shutdown":
-        restarted = DocumentIngestionService(ingestion.storage, embedding_factory=LocalEncoderFake)
+        restarted = DocumentIngestionService(ingestion.storage, auto_publish=False, embedding_factory=LocalEncoderFake)
         restarted.run_until_idle()
         assert restarted.snapshot(item.document_id)["task_status"] == "staged"
 
@@ -166,7 +166,7 @@ def test_only_one_worker_and_uploads_continue_while_encoding(ingestion, tmp_path
     assert ingestion.start()
     try:
         assert started.wait(5)
-        another = DocumentIngestionService(ingestion.storage, embedding_factory=LocalEncoderFake)
+        another = DocumentIngestionService(ingestion.storage, auto_publish=False, embedding_factory=LocalEncoderFake)
         assert another.start() and not another.run_until_idle()
         assert another.embedding is None  # Standby must not recover or encode while CLI/app owns lock.
         # The worker does not hold SQLite's write lock during native encoding.
@@ -182,7 +182,7 @@ def test_only_one_worker_and_uploads_continue_while_encoding(ingestion, tmp_path
 
 
 def test_standby_worker_automatically_takes_over_after_owner_exits(ingestion, tmp_path):
-    other = DocumentIngestionService(ingestion.storage, embedding_factory=LocalEncoderFake)
+    other = DocumentIngestionService(ingestion.storage, auto_publish=False, embedding_factory=LocalEncoderFake)
     assert ingestion.start()
     wait_for(lambda: ingestion.worker_lock.handle is not None)
     try:
