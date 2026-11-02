@@ -63,9 +63,10 @@ async def init_db():
     try:
         # Ensure ORM models are registered on Base.metadata before create_all
         import app.models.database_models  # noqa: F401
+        from app.core.schema_migrations import migrate_schema
 
         async with async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(migrate_schema)
         logger.info("数据库初始化完成（异步）")
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")

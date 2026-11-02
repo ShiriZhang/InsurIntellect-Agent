@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -38,6 +39,15 @@ class QueryHistory(Base):
     rewritten_query = Column(Text, nullable=True)
     rewriting_metadata_json = Column(Text, nullable=True)
     retrieved_chunks = Column(Text, nullable=True)
+    # Unknown legacy scope must never be inferred from retrieved citations.
+    scope_status = Column(String(32), nullable=False, default="unknown", server_default="unknown")
+    document_ids_json = Column(Text, nullable=True)
+    scope_fingerprint = Column(String(64), nullable=True)
+    scope_epoch = Column(Integer, nullable=True)
+    answer_language = Column(String(16), nullable=True)
+    query_mode = Column(String(16), nullable=True)
+    index_commit_id = Column(Integer, ForeignKey("index_commits.id"), nullable=True)
+    source_status = Column(String(32), nullable=False, default="unknown", server_default="unknown")
     created_time = Column(DateTime, default=datetime.utcnow, index=True)
 
 
@@ -56,10 +66,33 @@ class Document(Base):
     document_type = Column(String(128), nullable=True)
     product_name = Column(String(256), nullable=True)
     status = Column(String(64), default="active")
+    processing_status = Column(String(32), nullable=False, default="pending", server_default="pending")
+    language = Column(String(32), nullable=True)
+    effective_date = Column(String(64), nullable=True)
+    error_code = Column(String(64), nullable=True)
+    error_message = Column(Text, nullable=True)
+    error_pages_json = Column(Text, nullable=True)
+    attempt = Column(Integer, nullable=False, default=0, server_default="0")
+    published_attempt = Column(Integer, nullable=True)
+    published_fingerprint = Column(String(64), nullable=True)
+    index_commit_id = Column(Integer, ForeignKey("index_commits.id"), nullable=True)
+    deletion_status = Column(String(32), nullable=False, default="none", server_default="none")
+    deletion_epoch = Column(Integer, nullable=False, default=0, server_default="0")
+    deleted_time = Column(DateTime, nullable=True)
     created_time = Column(DateTime, default=datetime.utcnow)
     updated_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
+
+    # Prevent integer identity reuse even if an operator removes the highest row.
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    @property
+    def is_queryable(self) -> bool:
+        return (self.status == "active" and self.processing_status == "ready"
+                and self.deletion_status == "none" and self.published_attempt is not None
+                and self.published_attempt == self.attempt
+                and bool(self.published_fingerprint) and self.index_commit_id is not None)
 
 
 class DocumentChunk(Base):
@@ -74,9 +107,84 @@ class DocumentChunk(Base):
     page_number = Column(Integer, nullable=True)
     content_hash = Column(String(128), nullable=True)
     vector_id = Column(String(128), nullable=True)
+    attempt = Column(Integer, nullable=True)  # NULL identifies unversioned legacy chunks.
+    section_title = Column(Text, nullable=True)
+    page_chunk_index = Column(Integer, nullable=True)
+    normalized_content = Column(Text, nullable=True)
+    embedding_fingerprint = Column(String(64), nullable=True)
     created_time = Column(DateTime, default=datetime.utcnow)
 
     document = relationship("Document", back_populates="chunks")
+
+    __table_args__ = (UniqueConstraint("document_id", "attempt", "page_number",
+                                       "page_chunk_index", name="uq_chunk_position"),)
+
+
+class IngestionAttempt(Base):
+    """Durable ingestion queue and retry cleanup checkpoint."""
+
+    __tablename__ = "ingestion_attempts"
+    document_id = Column(Integer, ForeignKey("documents.id"), primary_key=True)
+    attempt = Column(Integer, primary_key=True)
+    status = Column(String(32), nullable=False, default="queued")
+    deletion_epoch = Column(Integer, nullable=False, default=0)
+    cleanup_json = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_time = Column(DateTime, default=datetime.utcnow)
+    updated_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ActiveContentClaim(Base):
+    """One owner per content hash, including failed and deleting sources."""
+
+    __tablename__ = "active_content_claims"
+    file_hash = Column(String(128), primary_key=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False, unique=True)
+
+
+class IndexCommit(Base):
+    """Immutable publication identity; only IndexPointer selects the live commit."""
+
+    __tablename__ = "index_commits"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    embedding_fingerprint = Column(String(64), nullable=False)
+    document_attempts_json = Column(Text, nullable=False)
+    vector_collection = Column(String(256), nullable=False)
+    snapshot_path = Column(String(1024), nullable=False)
+    created_time = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = {"sqlite_autoincrement": True}
+
+
+class IndexPointer(Base):
+    __tablename__ = "index_pointer"
+    name = Column(String(32), primary_key=True, default="current")
+    commit_id = Column(Integer, ForeignKey("index_commits.id"), nullable=False)
+
+
+class SessionScope(Base):
+    """An epoch remains distinct even when a session returns to an earlier scope."""
+
+    __tablename__ = "session_scopes"
+    session_id = Column(String(128), primary_key=True)
+    epoch = Column(Integer, primary_key=True)
+    scope_fingerprint = Column(String(64), nullable=False)
+    document_ids_json = Column(Text, nullable=False)
+    invalidated = Column(Boolean, nullable=False, default=False)
+    created_time = Column(DateTime, default=datetime.utcnow)
+
+
+class DeletionTask(Base):
+    """Persistent tombstone and resumable cleanup progress, never source text."""
+
+    __tablename__ = "deletion_tasks"
+    document_id = Column(Integer, ForeignKey("documents.id"), primary_key=True)
+    deletion_epoch = Column(Integer, nullable=False)
+    status = Column(String(32), nullable=False, default="pending")
+    stage = Column(String(64), nullable=False, default="invalidate")
+    completed_stages_json = Column(Text, nullable=False, default="[]")
+    error_message = Column(Text, nullable=True)
+    created_time = Column(DateTime, default=datetime.utcnow)
+    updated_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class DocumentMetadata(Base):

@@ -123,18 +123,24 @@ class QueryService:
         db: AsyncSession,
         session_id: Optional[str],
         limit: int = 10,
+        scope_fingerprint: Optional[str] = None,
+        scope_epoch: Optional[int] = None,
     ) -> str:
         """按会话获取最近若干轮用户/助理对话，拼接为简洁文本。
 
-        - 仅在 session_id 存在时生效；否则返回空字符串。
+        - 必须提供会话、已知范围指纹和 epoch；旧未知范围历史不进入追问。
         - 返回按时间升序的最近 N 条，格式："用户: ...\n助理: ..."，以便提示词引用。
         """
         try:
-            if not session_id:
+            if not session_id or not scope_fingerprint or scope_epoch is None:
                 return ""
             stmt = (
                 select(QueryHistory)
                 .where(QueryHistory.session_id == session_id)
+                .where(QueryHistory.scope_status == "known",
+                       QueryHistory.scope_fingerprint == scope_fingerprint,
+                       QueryHistory.scope_epoch == scope_epoch,
+                       QueryHistory.source_status == "active")
                 .order_by(QueryHistory.created_time.desc())
                 .limit(limit)
             )

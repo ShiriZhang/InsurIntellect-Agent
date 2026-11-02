@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     # 文件上传配置（作品集 v1 不提供 UI 上传；预置 samples/ + simple_ingest.py）
     ALLOWED_FILE_TYPES: List[str] = Field(default=["pdf"], description="允许的文件类型")
     PDF_STORAGE_PATH: str = Field(default="./data/documents/pdfs", description="PDF文件存储路径")
+    UPLOAD_MAX_BYTES: int = Field(default=20 * 1024 * 1024, gt=0, description="单文件大小限制")
     PROCESSED_DATA_PATH: str = Field(default="./data/processed", description="处理后数据存储路径")
 
     # 文档处理配置

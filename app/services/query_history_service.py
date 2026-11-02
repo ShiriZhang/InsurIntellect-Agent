@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.app_logging import get_logger
@@ -17,33 +17,11 @@ logger = get_logger(__name__)
 
 
 async def ensure_query_history_columns(db: AsyncSession) -> None:
-    """Lightweight SQLite-compatible DDL for demo databases without migrations."""
-    try:
-        pragma = await db.execute(text("PRAGMA table_info('query_history')"))
-        rows = pragma.all()
-        cols = {
-            row[1] if len(row) > 1 else (row.get("name") if isinstance(row, dict) else None)
-            for row in rows
-        }
-        cols = {col for col in cols if col}
-        alter_sqls = []
-        if "session_id" not in cols:
-            alter_sqls.append("ALTER TABLE query_history ADD COLUMN session_id TEXT")
-        if "rewritten_query" not in cols:
-            alter_sqls.append("ALTER TABLE query_history ADD COLUMN rewritten_query TEXT")
-        if "rewriting_metadata_json" not in cols:
-            alter_sqls.append("ALTER TABLE query_history ADD COLUMN rewriting_metadata_json TEXT")
-        if "retrieved_chunks" not in cols:
-            alter_sqls.append("ALTER TABLE query_history ADD COLUMN retrieved_chunks TEXT")
-        for sql in alter_sqls:
-            await db.execute(text(sql))
-        if alter_sqls:
-            await db.commit()
-    except Exception:
-        try:
-            await db.rollback()
-        except Exception:
-            pass
+    """Compatibility entry point for scripts; use the same startup migration."""
+    from app.core.schema_migrations import migrate_schema
+
+    connection = await db.connection()
+    await connection.run_sync(migrate_schema)
 
 
 async def save_query_history(
