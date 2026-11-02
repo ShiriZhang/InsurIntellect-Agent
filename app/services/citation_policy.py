@@ -44,7 +44,7 @@ def _has_clause_marker(text: str) -> bool:
         return False
     if any(marker in text for marker in CLAUSE_MARKERS):
         return True
-    return bool(_CLAUSE_NUM_RE.search(text))
+    return bool(_CLAUSE_NUM_RE.search(text) or re.search(r"\b(waiting period|deductible|exclusions?|not covered|insured|claim|coverage|shall|must)\b", text, re.I))
 
 
 def chunk_text(chunk: Dict[str, Any]) -> str:
@@ -60,6 +60,10 @@ def is_weak_citation_chunk(chunk: Dict[str, Any]) -> bool:
     if not text:
         return True
     has_clause = _has_clause_marker(text)
+    english_meta = len(re.findall(r"(?im)^\s*(document title|product name|effective date|document type|status)\s*:", text))
+    body = re.sub(r"(?im)^\s*(document title|product name|effective date|document type|status)\s*:[^\n]*", "", text).strip()
+    if english_meta >= 2 and not body:
+        return True
     meta_hits = sum(1 for marker in WEAK_META_MARKERS if marker in text)
     # clause_hits 仅统计多字 LITERAL 命中 + regex 命中（合计 0/1 的阈值语义不变）
     clause_hits = sum(1 for marker in CLAUSE_MARKERS if marker in text) + (1 if has_clause else 0)

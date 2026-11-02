@@ -59,6 +59,38 @@ English conditions. `metadata.citation_number` matches the generation prompt's
 one-based input order and the final SSE/API/history list. Evidence isn't reordered
 after generation.
 
-Answer-language templates, scope-aware follow-up epochs and the complete deletion
-API/UI are subsequent batches. These API regression tests use offline encoder and
-generation stand-ins, and do not establish real bilingual model quality.
+## Bilingual answers and follow-ups
+
+`answer_language=auto|zh|en`: an explicit parameter wins, followed by a clear
+language instruction in the question, then the main question language. Ambiguous
+mixed input falls back to Chinese. Responses and SSE start/end include the resolved
+`answer_language`. English uses `[Conclusion]`, `[Clause evidence]`, and
+`[Uncertainty / boundaries]`; Chinese uses the existing three bracketed titles.
+Evidence remains in its original language. Refusal, advice, clarification, local
+model/index unavailability, generation unavailability, timeout and cancellation
+have local templates in both languages. Service failures never claim missing evidence.
+
+```json
+{"question":"等待期多久？","document_ids":[1],"answer_language":"en","session_id":"my-session"}
+```
+
+Reuse the returned `session_id` for follow-ups. Omitting it creates a new session.
+Sorted, deduplicated selections define the scope fingerprint. Changing selection
+creates a new increasing `scope_epoch`, including when returning to an earlier
+selection; uploading a new document does not change selection. Late responses
+remain attached to their originally accepted epoch. Bare ambiguous references
+receive clarification. A follow-up may reuse prior user questions for intent;
+assistant answers never supply facts, and every factual answer retrieves fresh
+source evidence. Explicit manual modes take priority over inherited comparison.
+
+Ask, SSE end, history detail and history list expose scope IDs, fingerprint, epoch,
+resolved language/mode, index commit, source status and terminal answer kind.
+All terminal outcomes are saved by the same transaction boundary, including local
+refusals and service failures. Deletion/cancellation is checked again before save;
+a deleted source cannot be written back as a normal completed answer or citation.
+Interrupted streams end with an incomplete terminal outcome, or record cancellation
+when the client disconnects. Historical unknown scopes remain unknown and cannot
+be used for new follow-ups. Document deletion orchestration remains batch 7.
+
+Offline regression uses explicit encoder/generation stand-ins; real bilingual
+model quality still requires the separate batch 10 acceptance run.

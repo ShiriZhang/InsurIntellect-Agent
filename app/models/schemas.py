@@ -92,6 +92,12 @@ class QueryResponse(BaseModel):
     # UI state: answer | refusal | advice | llm_unavailable | degraded
     answer_kind: str = "answer"
     embedding_provider: Optional[str] = None
+    session_id: Optional[str] = None
+    scope_epoch: Optional[int] = None
+    scope_fingerprint: Optional[str] = None
+    answer_language: str = "zh"
+    index_commit_id: Optional[int] = None
+    source_status: str = "active"
     document_ids: List[int] = Field(default_factory=list)
     query_mode: str = "qa"
     document_coverage: List[Dict[str, Any]] = Field(default_factory=list)
@@ -100,6 +106,15 @@ class QueryResponse(BaseModel):
 
 
 class QueryHistoryResponse(BaseModel):
+    document_ids: Optional[List[int]] = None
+    session_id: Optional[str] = None
+    scope_epoch: Optional[int] = None
+    scope_fingerprint: Optional[str] = None
+    answer_language: Optional[str] = None
+    query_mode: Optional[str] = None
+    index_commit_id: Optional[int] = None
+    source_status: str = "unknown"
+    answer_kind: Optional[str] = None
     id: int
     question: str
     answer: str

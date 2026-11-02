@@ -142,7 +142,7 @@ def test_comparison_checks_every_document_and_embeds_question_once(scoped):
     assert [r['status'] for r in response['document_coverage']] == ['evidence', 'evidence', 'insufficient_evidence']
     assert {chunk['document_id'] for chunk in response['retrieved_chunks']} == {a, b}
     assert '180 days' in ' '.join(c['content'] for c in response['retrieved_chunks'])
-    assert f'文档 {c}' in response['answer'] and '未找到充分依据' in response['answer']
+    assert f'Document {c}' in response['answer'] and 'insufficient evidence' in response['answer']
     assert 'insufficient_evidence' in Generator.contexts[0][0]
 
 
@@ -217,7 +217,7 @@ def test_all_retrieval_paths_failed_is_unavailable_not_no_evidence(scoped, monke
     scoped.ingestion.coordinator.vectors.fail_query = True
     monkeypatch.setattr('app.services.index_request_view.rank_lexical_candidates',
                         lambda *a, **kw: (_ for _ in ()).throw(RuntimeError('failed')))
-    assert ask(scoped, [doc]).status_code == 503
+    assert ask(scoped, [doc]).json()['answer_kind'] == 'local_unavailable'
     assert not Generator.contexts
 
 
@@ -232,7 +232,7 @@ def test_scope_invalidated_during_retrieval_cannot_generate(scoped, monkeypatch)
             db.commit()
         return rows
     monkeypatch.setattr(vectors, 'query', invalidating)
-    assert ask(scoped, [doc_id]).status_code == 422
+    assert ask(scoped, [doc_id]).json()['answer_kind'] == 'cancelled'
     assert not Generator.contexts
 
 

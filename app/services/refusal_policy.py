@@ -57,21 +57,17 @@ def refusal_answer(reason: str = "insufficient_evidence") -> str:
 
 
 def is_advice_or_guarantee_question(question: str) -> bool:
-    question_text = (question or "").strip()
-    return any(marker in question_text for marker in ADVICE_OR_GUARANTEE_MARKERS)
+    import re
+    text = (question or "").casefold()
+    return any(marker in text for marker in ADVICE_OR_GUARANTEE_MARKERS) or bool(re.search(
+        r"该买|应该买|推荐.*保险|配置.*保险|保证.*获赔|should i (buy|purchase)|recommend.*(policy|insurance)|"
+        r"(allocate|allocation|configure).*insurance|guarantee.*(claim|paid|payment)|which.*(buy|purchase)|which\s+(policy|insurance|plan).*choose", text))
 
 
 def is_off_topic(question: str, chunks: List[Dict[str, Any]]) -> bool:
-    """Heuristic off-topic gate for demo corpus (weather / chit-chat)."""
-    question_text = (question or "").strip()
-    if any(keyword in question_text for keyword in INSURANCE_KEYWORDS):
-        return False
-    if any(keyword in question_text for keyword in CHITCHAT_OR_OFFTOPIC_MARKERS):
-        return True
-    if not chunks:
-        return True
-    top_text = chunks[0].get("content") or ""
-    overlap = sum(1 for keyword in INSURANCE_KEYWORDS if keyword in top_text and keyword in question_text)
-    return overlap == 0 and len(question_text) < 40 and not any(
-        char in question_text for char in "等待免赔责任犹豫理赔保"
-    )
+    import re
+    text = (question or "").casefold()
+    clause_context = any(k in text for k in INSURANCE_KEYWORDS) or bool(re.search(
+        r"\b(policy|insurance|cover|coverage|insured|exclusion|claim)\b", text))
+    return bool(re.search(r"讲.*笑话|\bjoke\b", text)) or (not clause_context and bool(
+        re.search(r"天气|足球|股票|\b(weather|football|stock price)\b", text)))

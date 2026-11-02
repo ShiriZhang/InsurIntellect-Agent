@@ -17,6 +17,7 @@ from app.models.schemas import (
     FeedbackRequest, QueryStatistics, ErrorResponse, BatchQueryRequest
 )
 from app.services.query_service import QueryService
+from app.services.query_sessions import history_fields
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -146,6 +147,7 @@ async def get_query_history(
             results.append(
                 QueryHistoryResponse(
                     id=record.id,
+                    **history_fields(record),
                     question=record.query,
                     answer=record.response,
                     query_type=record.model_used,
@@ -222,6 +224,7 @@ async def get_query_detail(query_id: int, db: AsyncSession = Depends(get_db)):
 
         return QueryHistoryResponse(
             id=query_record.id,
+            **history_fields(query_record),
             question=query_record.query,
             answer=query_record.response,
             query_type=query_record.model_used,
