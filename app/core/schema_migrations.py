@@ -16,7 +16,8 @@ def migrate_schema(connection):
         "CREATE TABLE IF NOT EXISTS schema_migrations "
         "(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
     ))
-    if connection.execute(text("SELECT 1 FROM schema_migrations WHERE version = 1")).first():
+    applied = set(connection.execute(text("SELECT version FROM schema_migrations")).scalars())
+    if 2 in applied:
         return
     Base.metadata.create_all(connection)
     for table in Base.metadata.sorted_tables:
@@ -32,4 +33,6 @@ def migrate_schema(connection):
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_chunk_position ON document_chunks "
         "(document_id, attempt, page_number, page_chunk_index)"
     )
-    connection.execute(text("INSERT INTO schema_migrations(version) VALUES (1)"))
+    if 1 not in applied:
+        connection.execute(text("INSERT INTO schema_migrations(version) VALUES (1)"))
+    connection.execute(text("INSERT INTO schema_migrations(version) VALUES (2)"))

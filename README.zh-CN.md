@@ -242,10 +242,12 @@ cp .env.example .env
 
 ```bash
 uv run python scripts/generate_sample_corpus.py --copy-to-data
-uv run python scripts/simple_ingest.py --reset
+uv run python -m scripts.simple_ingest --pdf-dir samples
 ```
 
 样例为 **公开合成条款**（等待期、责任免除、犹豫期等），不是真实保单。
+
+共用入库服务目前将候选持久化为 `staged`，索引一致发布由 OpenSpec 第 4 批接入；准备成功尚不代表新 PDF 可提问。状态和操作见[入库与 CLI 说明](docs/document-ingestion.md)。`--reset` 会明确拒绝，以免清空其他文档。
 
 ### 3. 一键演示服务
 
@@ -413,7 +415,7 @@ Docker 可选，但现在也统一使用 **8766** 服务端口。Compose 固定�
 ## 提供商说明
 
 - **LLM**：任意 OpenAI 兼容 Base URL（作品集默认本机 new-api，如 `http://127.0.0.1:31876/v1`）。禁止提交密钥。
-- **嵌入**：默认本机 HF `BAAI/bge-small-zh-v1.5`（缓存后本地免费）。**入库与查询必须同一模型**；换模型后执行 `simple_ingest.py --reset`。
+- **嵌入**：入库与查询必须使用相同的本地模型/profile。切换模型后按[重建与入库说明](docs/document-ingestion.md)处理；不再支持目录级 `--reset`。
 - **Hash 回退** `local:hash` 仅适合离线演示，排序较弱——仅在明确使用 hash 时再调低阈值。
 
 ---

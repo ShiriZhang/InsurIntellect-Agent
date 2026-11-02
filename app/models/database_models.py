@@ -112,6 +112,10 @@ class DocumentChunk(Base):
     page_chunk_index = Column(Integer, nullable=True)
     normalized_content = Column(Text, nullable=True)
     embedding_fingerprint = Column(String(64), nullable=True)
+    source_start = Column(Integer, nullable=True)
+    source_end = Column(Integer, nullable=True)
+    context_before = Column(Text, nullable=True)
+    embedding_json = Column(Text, nullable=True)  # Unpublished vector checkpoint; never a ready index.
     created_time = Column(DateTime, default=datetime.utcnow)
 
     document = relationship("Document", back_populates="chunks")
@@ -129,6 +133,9 @@ class IngestionAttempt(Base):
     status = Column(String(32), nullable=False, default="queued")
     deletion_epoch = Column(Integer, nullable=False, default=0)
     cleanup_json = Column(Text, nullable=True)
+    embedding_profile_json = Column(Text, nullable=True)
+    diagnostics_json = Column(Text, nullable=True)
+    expected_chunks = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
     created_time = Column(DateTime, default=datetime.utcnow)
     updated_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -242,10 +242,12 @@ cp .env.example .env
 
 ```bash
 uv run python scripts/generate_sample_corpus.py --copy-to-data
-uv run python scripts/simple_ingest.py --reset
+uv run python -m scripts.simple_ingest --pdf-dir samples
 ```
 
 Samples are **public synthetic clauses** (waiting period, exclusions, free-look, etc.), not real policies.
+
+The shared ingestion service currently prepares durable candidates (`staged`), while index publication is scheduled for OpenSpec batch 4. Preparation does not yet make a new PDF queryable. See [ingestion and CLI states](docs/document-ingestion.md); `--reset` is rejected to protect other documents.
 
 ### 3. One-command demo server
 
@@ -413,7 +415,7 @@ Docker is optional but now follows the same **8766** service port. Compose fixes
 ## Provider notes
 
 - **LLM**: any OpenAI-compatible base URL (portfolio default: local new-api, e.g. `http://127.0.0.1:31876/v1`). Do not commit keys.
-- **Embeddings**: default local HF `BAAI/bge-small-zh-v1.5` (free after cache). Keep **ingest and query on the same model**. After switching models, re-run `simple_ingest.py --reset`.
+- **Embeddings**: keep ingest and query on the same local model/profile. After a model change, follow the [profile rebuild and ingestion guide](docs/document-ingestion.md); directory-wide `--reset` is no longer supported.
 - **Hash fallback** `local:hash` is for offline demos only; ranking is weaker — lower threshold only if you knowingly use hash.
 
 ---

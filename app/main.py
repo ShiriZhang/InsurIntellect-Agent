@@ -4,6 +4,7 @@ InsurIntellect Agent - 主应用入口
 """
 
 import logging
+import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
@@ -107,7 +108,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"BM25 索引加载失败，将以纯向量模式运行。错误: {e}")
 
-    yield
+    from app.services.document_ingestion import DocumentIngestionService
+    ingestion = DocumentIngestionService()
+    app.state.document_ingestion = ingestion
+    await asyncio.to_thread(ingestion.start)
+    try:
+        yield
+    finally:
+        await asyncio.to_thread(ingestion.stop)
 
     # 关闭时执行
     logger.info("InsurIntellect Agent 正在关闭...")

@@ -23,7 +23,7 @@ def test_legacy_schema_migrates_without_inventing_readiness_or_scope(tmp_path):
         conn.exec_driver_sql("INSERT INTO document_chunks VALUES (1, 7, 'keep source')")
         migrate_schema(conn)
         migrate_schema(conn)
-        assert conn.execute(text("SELECT count(*) FROM schema_migrations")).scalar() == 1
+        assert conn.execute(text("SELECT count(*) FROM schema_migrations")).scalar() == 2
         assert "deletion_tasks" in inspect(conn).get_table_names()
     with Session(engine) as db:
         doc = db.get(Document, 7)
@@ -49,7 +49,7 @@ def test_startup_and_history_compatibility_entry_points(tmp_path, monkeypatch):
         await database.init_db()
         async with async_sessionmaker(engine)() as db:
             await ensure_query_history_columns(db)
-            assert (await db.execute(text("SELECT count(*) FROM schema_migrations"))).scalar() == 1
+            assert (await db.execute(text("SELECT count(*) FROM schema_migrations"))).scalar() == 2
         await engine.dispose()
     asyncio.run(scenario())
 
@@ -78,3 +78,23 @@ def test_unknown_history_excluded_from_followups(tmp_path):
             assert len((await db.scalars(select(QueryHistory))).all()) == 4
         await engine.dispose()
     asyncio.run(scenario())
+
+
+def test_version_one_database_receives_candidate_checkpoint_columns(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'version-one.db'}")
+    with engine.begin() as conn:
+        migrate_schema(conn)
+        conn.exec_driver_sql("DELETE FROM schema_migrations WHERE version = 2")
+        for name in ("embedding_json", "context_before", "source_start", "source_end"):
+            conn.exec_driver_sql(f"ALTER TABLE document_chunks DROP COLUMN {name}")
+        for name in ("embedding_profile_json", "diagnostics_json", "expected_chunks"):
+            conn.exec_driver_sql(f"ALTER TABLE ingestion_attempts DROP COLUMN {name}")
+        conn.exec_driver_sql("INSERT INTO documents(id, filename, status) VALUES (10, 'keep.pdf', 'active')")
+        migrate_schema(conn)
+        migrate_schema(conn)
+        assert "embedding_json" in {c["name"] for c in inspect(conn).get_columns("document_chunks")}
+        assert "expected_chunks" in {c["name"] for c in inspect(conn).get_columns("ingestion_attempts")}
+    with Session(engine) as db:
+        assert db.get(Document, 10).filename == 'keep.pdf'
+        assert not db.get(Document, 10).is_queryable
+    engine.dispose()

@@ -1,6 +1,6 @@
 # 文档库数据与迁移（任务 2.1–2.3）
 
-本批交付持久化模型、schema 迁移和受控原文件登记服务；解析、索引发布、上传/删除接口与共用 CLI 在后续批次接入。登记成功仅表示 `queued`，不表示可提问。当前 `simple_ingest.py` 仍是旧索引入口，不能用它替代新文档库首次导入或宣称新模型已端到端就绪。
+第 2 批交付持久化模型、schema 迁移和受控原文件登记服务。第 3 批已接入解析、持久 worker 和共用 CLI，操作见 [共用入库说明](document-ingestion.md)；索引发布、上传/删除接口仍由后续批次接入。登记成功仅表示 `queued`，候选准备成功也不表示可提问。
 
 ## 初始化当前空库
 
@@ -10,7 +10,7 @@
 python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 ```
 
-数据库位置遵守 `DATABASE_URL_ASYNC`，未配置则从 `DATABASE_URL` 推导。首次运行创建空表，重复运行不重置数据。后续共用导入入口应先调用 `DocumentStorage.accept`，再由入库 worker 解析、切块、向量化并发布；首次样本使用 `samples/` 中的 PDF。仅在生成和 embedding 配置准备完成且索引提交成功后，才能按返回的整数 ID 查询。
+数据库位置遵守 `DATABASE_URL_ASYNC`，未配置则从 `DATABASE_URL` 推导。首次运行创建空表，重复运行不重置数据。准备好本地模型缓存后，可通过 `python -m scripts.simple_ingest --pdf-dir samples` 登记并准备样本；同一入口使用 `DocumentStorage.accept` 和持久入库 worker。仅在后续完整索引发布成功后，才能按返回的整数 ID 查询。
 
 ## 已有库升级与重建
 

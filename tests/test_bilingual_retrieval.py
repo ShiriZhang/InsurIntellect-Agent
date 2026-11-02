@@ -3,7 +3,6 @@
 import asyncio
 import json
 import math
-import pickle
 from types import SimpleNamespace
 
 import numpy as np
@@ -300,31 +299,29 @@ def test_insufficient_keyword_candidate_never_enters_generation_context(monkeypa
     assert [c["chunk_id"] for c in contexts[0]] == ["a"]
 
 
-def test_cli_ingestion_builds_keyword_index_with_the_shared_profile(monkeypatch, tmp_path):
+def test_cli_ingestion_prepares_shared_source_text_without_legacy_publication(tmp_path):
     from scripts import simple_ingest
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+    from app.models.database_models import DocumentChunk
+    from app.services.document_ingestion import DocumentIngestionService
+    from app.services.document_storage import DocumentStorage
+    from ingestion_fakes import LocalEncoderFake
+    from test_pdf_quality import make_pdf
 
     source = tmp_path / "source"
     source.mkdir()
-    (source / "sample.pdf").write_bytes(b"synthetic-placeholder")
     original = "AlphaCare-X2 等待期90天；生效日2026-10-25，非意外事故不予赔付。"
-    monkeypatch.setattr(simple_ingest, "_extract_pages", lambda path: [(2, original)])
-    monkeypatch.setattr(simple_ingest, "EmbeddingService", lambda: SimpleNamespace(embedding_function=object()))
-    received = []
-
-    class Store:
-        def __init__(self, **kwargs):
-            assert kwargs["collection_metadata"] == {"hnsw:space": "cosine"}
-
-        def add_documents(self, documents, ids):
-            received.extend(documents)
-
-    monkeypatch.setattr(simple_ingest, "Chroma", Store)
-    processed = tmp_path / "processed"
-    monkeypatch.setattr(simple_ingest.settings, "PROCESSED_DATA_PATH", str(processed))
-    simple_ingest.ingest(source, tmp_path / "vectors", "test", False)
-    with (processed / "bm25_index.pkl").open("rb") as stored:
-        payload = pickle.load(stored)
-    assert payload["lexical_profile"] == lexical_profile()
-    assert received[0].page_content == original
-    ids, _ = rank_lexical_candidates(payload["bm25"], payload["ids"], "waiting period")
-    assert ids == payload["ids"]
+    make_pdf(source / "sample.pdf", ["", original])
+    engine = create_engine(f"sqlite:///{tmp_path / 'cli.db'}")
+    service = DocumentIngestionService(DocumentStorage(engine, tmp_path / "pdfs"), embedding_factory=LocalEncoderFake)
+    try:
+        result = simple_ingest.ingest(source, service=service)
+        assert result["prepared"] and not result["ready"]
+        with Session(engine) as db:
+            chunk = db.scalars(select(DocumentChunk)).one()
+            assert chunk.page_number == 2 and original in chunk.content
+            assert "term:waiting_period" in tokenize_retrieval(chunk.content)
+    finally:
+        service.stop()
+        engine.dispose()

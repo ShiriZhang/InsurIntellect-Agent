@@ -86,8 +86,15 @@ class Settings(BaseSettings):
     PROCESSED_DATA_PATH: str = Field(default="./data/processed", description="处理后数据存储路径")
 
     # 文档处理配置
-    CHUNK_SIZE: int = Field(default=400, description="文档块大小")
-    CHUNK_OVERLAP: int = Field(default=40, description="文档块重叠")
+    CHUNK_SIZE: int = Field(default=400, ge=1, description="文档块字符上限，仍受 tokenizer 预算限制")
+    CHUNK_OVERLAP: int = Field(default=40, ge=0, description="相邻块原文上下文字符数")
+    GENERATION_CONTEXT_TOKENS: int = Field(default=8192, ge=1)
+    GENERATION_PROMPT_RESERVE_TOKENS: int = Field(default=2048, ge=0)
+    GENERATION_CHUNK_MAX_BYTES: int = Field(default=2048, ge=1)
+    INGEST_QUEUE_SIZE: int = Field(default=16, ge=1)
+    INGEST_BATCH_SIZE: int = Field(default=16, ge=1)
+    INGEST_POLL_INTERVAL: float = Field(default=0.25, ge=0.01)
+    INGEST_SHUTDOWN_TIMEOUT: float = Field(default=2.0, gt=0)
 
     # 查询配置
     MAX_RETRIEVED_CHUNKS: int = Field(default=8, description="最大检索块数")

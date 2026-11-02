@@ -146,6 +146,7 @@ class InputPolicy:
     distance: str
     chunk_size: int
     chunk_overlap: int
+    generation_chunk_bytes: int
 
     @classmethod
     def from_settings(cls, settings):
@@ -153,7 +154,9 @@ class InputPolicy:
                    settings.LOCAL_EMBEDDING_TEXT_NORMALIZATION,
                    settings.LOCAL_EMBEDDING_QUERY_PREFIX, settings.LOCAL_EMBEDDING_DOCUMENT_PREFIX,
                    settings.LOCAL_EMBEDDING_NORMALIZE, settings.EMBEDDING_DISTANCE,
-                   max(180, settings.CHUNK_SIZE or 400), max(20, settings.CHUNK_OVERLAP or 40))
+                   settings.CHUNK_SIZE, settings.CHUNK_OVERLAP,
+                   min(settings.GENERATION_CHUNK_MAX_BYTES,
+                       settings.GENERATION_CONTEXT_TOKENS - settings.GENERATION_PROMPT_RESERVE_TOKENS))
 
     def prepare(self, text, *, query):
         if self.normalization == "NFKC":
@@ -171,8 +174,11 @@ class InputPolicy:
                 "normalize_vectors": self.normalize_vectors, "distance": self.distance,
                 "input_budget": {"max_tokens": effective_limit, "special_tokens": "included",
                                  "overflow": "reject", "implicit_model_prompt": "disabled"},
-                "chunking": {"version": "legacy-character-v1", "size": self.chunk_size,
-                             "overlap": self.chunk_overlap, "separators": ["\n\n", "\n", "。", "；", " ", ""]}}
+                "chunking": {"version": "page-clause-token-v1", "size": self.chunk_size,
+                             "overlap": self.chunk_overlap, "source_offsets": "characters",
+                             "generation_chunk_bytes": self.generation_chunk_bytes,
+                             "generation_budget": "utf8-byte-upper-bound",
+                             "context": "section-title-and-preceding-source-tail"}}
 
 
 def effective_token_limit(client, tokenizer, configured):

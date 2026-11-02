@@ -45,5 +45,5 @@ fi
 
 echo "Demo: http://${HOST}:${PORT}/"
 echo "Embed: $OPENAI_EMBEDDING_MODEL thr=$SIMILARITY_THRESHOLD offline=$HF_HUB_OFFLINE"
-echo "If you changed embedding model, re-ingest: PYTHONPATH=. $PY scripts/simple_ingest.py --reset"
+echo "Ingestion/profile rebuild: see docs/document-ingestion.md; --reset is no longer supported."
 exec "$PY" -m uvicorn app.main:app --host "$HOST" --port "$PORT"
