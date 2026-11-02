@@ -34,6 +34,7 @@ class StoredDocument:
     attempt: int
     processing_status: str
     created: bool
+    accepted: bool = False
 
 
 class DocumentStorage:
@@ -178,7 +179,7 @@ class DocumentStorage:
                     db.flush()
                     self._commit(conn)
                     committed = True
-                    return StoredDocument(doc.id, doc.attempt, doc.processing_status, created)
+                    return StoredDocument(doc.id, doc.attempt, doc.processing_status, created, True)
         finally:
             if temp_path is not None:
                 temp_path.unlink(missing_ok=True)

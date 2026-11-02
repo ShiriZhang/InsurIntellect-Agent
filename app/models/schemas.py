@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RetrievedChunk(BaseModel):
@@ -22,16 +22,60 @@ class RetrievedChunk(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
+class DocumentResponse(BaseModel):
+    document_id: int
+    name: str
+    processing_status: str
+    deletion_status: str
+    ready: bool
+    page_count: Optional[int] = None
+    language: Optional[str] = None
+    file_size: Optional[int] = None
+    attempt: int
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    error_pages: List[int] = Field(default_factory=list)
+    file_url: Optional[str] = None
+
+
+class DocumentListResponse(BaseModel):
+    documents: List[DocumentResponse]
+    upload_max_bytes: int
+    max_pages: int
+    design_capacity: int
+    capacity_warning: Optional[str] = None
+
+
 class QueryRequest(BaseModel):
     """POST /api/v1/queries/ask body."""
 
-    question: str = Field(..., min_length=1, description="用户问题")
+    question: str = Field(..., min_length=1, max_length=1000, description="用户问题")
+    document_ids: List[Annotated[int, Field(strict=True, gt=0)]] = Field(min_length=1)
+    query_mode: Literal["auto", "qa", "compare"] = "auto"
+    answer_language: Literal["auto", "zh", "en"] = "auto"
     query_type: str = Field(default="general", description="查询类型")
     session_id: Optional[str] = None
     stream: Optional[bool] = False
     show_sources: Optional[bool] = True
 
     model_config = ConfigDict(extra="ignore")
+
+    @field_validator("document_ids")
+    @classmethod
+    def normalize_scope(cls, values):
+        return sorted(set(values))
+
+
+class BatchQueryRequest(BaseModel):
+    questions: List[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(min_length=1, max_length=10)
+    document_ids: List[Annotated[int, Field(strict=True, gt=0)]] = Field(min_length=1)
+    query_type: str = "general"
+    query_mode: Literal["auto", "qa", "compare"] = "auto"
+    answer_language: Literal["auto", "zh", "en"] = "auto"
+
+    def queries(self):
+        shared = self.model_dump(exclude={"questions"})
+        return [QueryRequest(question=q, **shared) for q in self.questions]
 
 
 class QueryResponse(BaseModel):
@@ -48,6 +92,9 @@ class QueryResponse(BaseModel):
     # UI state: answer | refusal | advice | llm_unavailable | degraded
     answer_kind: str = "answer"
     embedding_provider: Optional[str] = None
+    document_ids: List[int] = Field(default_factory=list)
+    query_mode: str = "qa"
+    document_coverage: List[Dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="ignore")
 

@@ -555,7 +555,8 @@ class InsurIntellectAgent:
                         pass
                 md["chunk_id"] = ids_list[i]
                 out.append(Document(page_content=text or "", metadata=md))
-            return out
+            by_id = {doc.metadata["chunk_id"]: doc for doc in out}
+            return [by_id[key] for key in chunk_ids if key in by_id]
         except Exception:
             return []
     

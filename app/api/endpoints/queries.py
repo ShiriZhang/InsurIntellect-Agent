@@ -14,7 +14,7 @@ from app.core.app_logging import get_logger
 from app.models.database_models import QueryHistory
 from app.models.schemas import (
     QueryRequest, QueryResponse, QueryHistoryResponse, QueryHistoryListResponse,
-    FeedbackRequest, QueryStatistics, ErrorResponse
+    FeedbackRequest, QueryStatistics, ErrorResponse, BatchQueryRequest
 )
 from app.services.query_service import QueryService
 
@@ -63,12 +63,12 @@ async def ask_question(
             use_stream = bool(stream)
 
         if use_stream:
-            sse_iter = await query_service.process_query(db=db, request=query_request, stream=True)
+            sse_iter = await query_service.process_query(db=db, request=query_request, stream=True, coordinator=request.app.state.index_coordinator)
             logger.info(f"查询流式处理开始: {query_request.question[:50]}...")
             return StreamingResponse(sse_iter, media_type="text/event-stream")
 
         # 非流式统一入口
-        response = await query_service.process_query(db=db, request=query_request, stream=False)
+        response = await query_service.process_query(db=db, request=query_request, stream=False, coordinator=request.app.state.index_coordinator)
         logger.info(f"查询处理完成: {query_request.question[:50]}...")
         return response
 
@@ -291,60 +291,25 @@ async def get_query_statistics(
 
 @router.post("/batch", response_model=List[QueryResponse], summary="批量查询")
 async def batch_query(
-    questions: List[str],
+    batch: BatchQueryRequest,
     request: Request,
-    query_type: str = "general",
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    批量处理多个查询
-    注意: 批量查询可能需要较长时间
-    """
-    try:
-        # 验证批量查询限制
-        if len(questions) > 10:
-            raise HTTPException(status_code=400, detail="批量查询最多支持10个问题")
-        if not questions:
-            raise HTTPException(status_code=400, detail="问题列表不能为空")
+    from app.services.query_scope import validate_scope
+    from app.services.query_mode import resolve_mode
 
-        # 验证每个问题
-        for i, question in enumerate(questions):
-            if not question.strip():
-                raise HTTPException(status_code=400, detail=f"第{i+1}个问题不能为空")
-            if len(question) > 1000:
-                raise HTTPException(status_code=400, detail=f"第{i+1}个问题长度不能超过1000个字符")
-
-        responses: List[QueryResponse] = []
-
-        # 逐个处理查询
-        for question in questions:
-            try:
-                req = QueryRequest(question=question, query_type=query_type)
-                response = await query_service.process_query(db=db, request=req)
-                responses.append(response)
-            except Exception as e:
-                # 单个查询失败时,添加错误响应
-                error_response = QueryResponse(
-                    question=question,
-                    answer=f"查询处理失败: {str(e)}",
-                    query_type=query_type,
-                    response_time=0.0,
-                    chunks_used=0,
-                    retrieved_chunks=[],
-                    confidence_score=0.0,
-                    query_id=None
-                )
-                responses.append(error_response)
-                logger.error(f"批量查询中单个问题处理失败 {question[:50]}... - {e}")
-
-        logger.info(f"批量查询完成: {len(questions)}个问题")
-        return responses
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"批量查询失败: {e}")
-        raise HTTPException(status_code=500, detail=f"批量查询失败: {str(e)}")
+    queries = batch.queries()
+    # Validate every shared ID and every resolved mode before the first child.
+    await validate_scope(db, queries[0])
+    for item in queries:
+        if not item.question.strip():
+            raise HTTPException(400, "问题不能为空")
+        resolve_mode(item)
+    responses = []
+    for item in queries:
+        responses.append(await query_service.process_query(
+            db=db, request=item, coordinator=request.app.state.index_coordinator))
+    return responses
 
 
 @router.post("/suggest", response_model=List[str], summary="获取查询建议")

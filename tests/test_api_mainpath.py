@@ -17,7 +17,7 @@ def test_models_import():
     from app.models.schemas import QueryRequest, QueryResponse, RetrievedChunk, HealthCheck
     from app.models.database_models import QueryHistory, Document, DocumentChunk
 
-    assert QueryRequest(question="等待期是多久？").question
+    assert QueryRequest(question="等待期是多久？", document_ids=[1]).question
     chunk = RetrievedChunk(
         chunk_id=1,
         document_id=1,
@@ -84,7 +84,7 @@ def test_ask_validation_empty_question():
     with TestClient(app) as client:
         r = client.post(
             "/api/v1/queries/ask",
-            json={"question": "   ", "stream": False},
+            json={"question": "   ", "document_ids": [1], "stream": False},
         )
         assert r.status_code == 400
 

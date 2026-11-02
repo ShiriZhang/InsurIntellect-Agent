@@ -467,6 +467,14 @@ class IndexCoordinator:
         from app.services.index_request_view import IndexRequestView
         return IndexRequestView(self, document_ids, profile)
 
+    def open_current_view(self, document_ids):
+        """Freeze committed identity before loading/encoding the question model."""
+        with self.state.lock, Session(self.engine) as db:
+            current = self._record(db)
+            if current is None:
+                raise IndexUnavailable("no_committed_index")
+            return self.open_view(document_ids, current.profile)
+
     def invalidate_source(self, document_id):
         """Deletion hook: block/cancel first, rebuild, then report index cleanup completeness.
 

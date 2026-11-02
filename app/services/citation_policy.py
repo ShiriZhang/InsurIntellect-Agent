@@ -60,8 +60,6 @@ def is_weak_citation_chunk(chunk: Dict[str, Any]) -> bool:
     if not text:
         return True
     has_clause = _has_clause_marker(text)
-    if len(text) < 40 and not has_clause:
-        return True
     meta_hits = sum(1 for marker in WEAK_META_MARKERS if marker in text)
     # clause_hits 仅统计多字 LITERAL 命中 + regex 命中（合计 0/1 的阈值语义不变）
     clause_hits = sum(1 for marker in CLAUSE_MARKERS if marker in text) + (1 if has_clause else 0)
@@ -133,56 +131,31 @@ def curate_citations(
     """Dedupe + drop weak cover chunks + keep top-N for answer [1]..[N]."""
     if not chunks:
         return []
-    limit = max(1, min(int(limit or 4), 8))
-    scored: List[tuple[float, float, int, Dict[str, Any]]] = []
-    for idx, raw in enumerate(chunks):
-        if not isinstance(raw, dict):
+    limit = max(1, int(limit or 4))
+    selected, seen_ids, seen_text = [], set(), set()
+    for raw in chunks:
+        if not isinstance(raw, dict) or is_weak_citation_chunk(raw):
             continue
         chunk = dict(raw)
-        metadata = chunk.get("metadata") if isinstance(chunk.get("metadata"), dict) else {}
-        if not chunk.get("document_name"):
-            chunk["document_name"] = (
-                metadata.get("document_title")
-                or metadata.get("filename")
-                or metadata.get("display_name")
-                or "未知文档"
-            )
-        if chunk.get("page_number") is None and metadata.get("page_number") is not None:
+        metadata = chunk.get("metadata") or {}
+        document = chunk.get("document_id", metadata.get("document_id"))
+        # Legacy chunks without document IDs are isolated by their displayed name.
+        if document is None:
+            document = chunk.get("document_name") or metadata.get("filename")
+        attempt = metadata.get("attempt")
+        identity = chunk.get("chunk_id", metadata.get("chunk_id"))
+        identity_key = (document, attempt, identity)
+        text_key = (document, attempt, chunk.get("page_number", metadata.get("page_number")), chunk_text(chunk).strip())
+        if (identity is not None and identity_key in seen_ids) or text_key in seen_text:
+            continue
+        seen_ids.add(identity_key)
+        seen_text.add(text_key)
+        chunk.setdefault("document_name", metadata.get("document_title") or metadata.get("filename") or "未知文档")
+        if chunk.get("page_number") is None:
             chunk["page_number"] = metadata.get("page_number")
-        if not chunk.get("content"):
-            chunk["content"] = chunk_text(chunk)
-
-        rrf = finite_number(metadata.get("rrf_score"))
-        base = rrf if rrf is not None else chunk_gate_score(chunk)
-        score = base
-        # Relevance hints affect tied ranks only; they cannot alter semantic evidence.
-        bonus = relevance_bonus(question, chunk)
-        if is_weak_citation_chunk(chunk):
-            score -= 1.0
-        scored.append((score, bonus, idx, chunk))
-
-    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
-    strong = [item for item in scored if not is_weak_citation_chunk(item[3])]
-    pool = strong if strong else scored
-    selected: List[Dict[str, Any]] = []
-    seen_pages: set[str] = set()
-    seen_prefix: set[str] = set()
-    for _score, _bonus, _idx, chunk in pool:
-        key = doc_page_key(chunk)
-        text = chunk_text(chunk).strip()
-        prefix = text[:48]
-        if key in seen_pages:
-            continue
-        if prefix and prefix in seen_prefix:
-            continue
-        seen_pages.add(key)
-        if prefix:
-            seen_prefix.add(prefix)
         selected.append(chunk)
         if len(selected) >= limit:
             break
-    if not selected:
-        selected = [item[3] for item in scored[:limit]]
     return selected
 
 

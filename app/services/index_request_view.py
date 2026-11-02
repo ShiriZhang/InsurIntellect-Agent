@@ -118,9 +118,7 @@ class IndexRequestView:
             if not self._preparing:
                 self._release_reader()
 
-    def search(self, question, vector, *, top_k=8):
-        from rank_bm25 import BM25Plus
-
+    def search(self, question, vector, *, top_k=8, per_document=False):
         with self.coordinator.state.lock:
             self.assert_valid()
             if self._released:
@@ -144,19 +142,18 @@ class IndexRequestView:
             tokens = [snapshot["tokens"][positions[key]] for key in ids]
             snapshot.clear()  # Drop all out-of-scope source material before native retrieval.
             self.assert_valid()
-            lexical_ids, lexical_scores = [], {}
-            if tokens and any(tokens):
-                lexical_ids, lexical_scores = rank_lexical_candidates(BM25Plus(tokens), ids, question, limit=50)
-            try:
-                vector_ids, distances = self.coordinator.vectors.query(
-                    self.commit.profile, vector, allowed, 50, collection=self.commit.vector_collection)
-                # A broken filter must never make a source outside this frozen view visible.
-                if any(key not in mapping for key in vector_ids):
-                    raise IndexUnavailable("vector_scope_filter_failed")
-            except Exception:
-                vector_ids, distances = [], {}
-            fused, rankings = reciprocal_rank_fusion([vector_ids, lexical_ids], top_n=None)
-            selected = fused[:top_k]
+            groups = [{f"{doc}:{attempt}"} for doc, attempt in self.pairs] if per_document else [allowed]
+            selected, distances, rankings, lexical_scores = [], {}, {}, {}
+            for source_keys in groups:
+                scoped_ids = [key for key in ids if mapping[key]["metadata"]["source_key"] in source_keys]
+                scoped_set = set(scoped_ids)
+                scoped_tokens = [tokens[i] for i, key in enumerate(ids) if key in scoped_set]
+                chosen, semantic, fused_scores, lexical = self._rank(
+                    question, vector, source_keys, scoped_ids, scoped_tokens, top_k)
+                selected.extend(chosen)
+                distances.update(semantic)
+                rankings.update(fused_scores)
+                lexical_scores.update(lexical)
             stored = self.coordinator.vectors.get(self.commit.profile, selected, collection=self.commit.vector_collection)
             result = []
             for key in selected:
@@ -186,6 +183,30 @@ class IndexRequestView:
             self._preparing = False
             self._release_reader()  # Generation retains only the selected evidence above.
             self.coordinator.collect_garbage()
+
+    def _rank(self, question, vector, source_keys, ids, tokens, top_k):
+        from rank_bm25 import BM25Plus
+
+        lexical_ids, lexical_scores = [], {}
+        vector_ids, distances = [], {}
+        lexical_failed = vector_failed = False
+        try:
+            if tokens and any(tokens):
+                lexical_ids, lexical_scores = rank_lexical_candidates(BM25Plus(tokens), ids, question, limit=50)
+        except Exception:
+            lexical_failed = True
+        try:
+            vector_ids, distances = self.coordinator.vectors.query(
+                self.commit.profile, vector, source_keys, 50, collection=self.commit.vector_collection)
+            if not set(vector_ids).issubset(ids):
+                raise IndexUnavailable("vector_scope_filter_failed")
+        except Exception:
+            vector_ids, distances = [], {}
+            vector_failed = True
+        if lexical_failed and vector_failed:
+            raise IndexUnavailable("all_scoped_retrieval_paths_failed")
+        fused, rankings = reciprocal_rank_fusion([vector_ids, lexical_ids], top_n=None)
+        return fused[:top_k], distances, rankings, lexical_scores
 
     def close(self):
         self.cancel("request_view_closed")

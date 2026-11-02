@@ -238,8 +238,9 @@ class LLMService:
             content = chunk.get("content", "")
             page_num = chunk.get("page_number", "N/A")
             doc_name = chunk.get("document_name", "Unknown")
+            document_id = chunk.get("document_id", "Unknown")
             doc_parts.append(
-                f"[{i}] 来源: {doc_name} | 页码: {page_num}\n内容: {content}\n"
+                f"[{i}] 来源: {doc_name} | 文档 ID: {document_id} | 页码: {page_num}\n内容: {content}\n"
             )
         context = "\n".join(doc_parts) if doc_parts else "(无上下文)"
         prompt = (

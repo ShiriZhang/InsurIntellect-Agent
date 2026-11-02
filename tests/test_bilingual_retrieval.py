@@ -222,30 +222,23 @@ def test_keyword_result_with_missing_vector_is_not_semantic_evidence(monkeypatch
 
 
 @pytest.mark.parametrize("stream", [False, True])
-def test_high_bm25_low_evidence_is_refused_before_either_generation_transport(monkeypatch, stream):
-    from app.services.query_service import QueryService
-    from app.models.schemas import QueryRequest
-
-    agent, _ = make_agent(bm25=True, vectors={"a": [0.1, 1], "b": [0.1, 1]})
-    service = QueryService()
-    service._agent = agent
-    monkeypatch.setattr(service, "_spawn_bg", lambda coro: coro.close())
-    monkeypatch.setattr(rag_workflow.settings, "ENABLE_QUERY_REWRITING", False)
-    monkeypatch.setattr(rag_workflow.settings, "SIMPLE_RAG_MODE", True)
-
-    async def run():
-        response = await service.process_query(None, QueryRequest(question="等待期多久？"), stream=stream)
-        if not stream:
-            assert response.answer_kind == "refusal"
-            assert response.retrieved_chunks == []
-        else:
-            messages = [line async for line in response]
-            events = [json.loads(line[6:].strip()) for line in messages if line.startswith("data: ")]
-            end = next(event for event in events if event.get("type") == "end")
-            assert end["answer_kind"] == "refusal" and end["retrieved_chunks"] == []
-            assert not any(event.get("type") == "token" for event in events)
-
-    asyncio.run(run())
+def test_high_bm25_low_evidence_is_refused_before_either_generation_transport(scoped, monkeypatch, stream):
+    from test_scoped_query_api import Generator, QueryEncoder, ready, ask
+    doc = ready(scoped)
+    monkeypatch.setattr(QueryEncoder, "embed_query", lambda self, q: [1., 0., 0.])
+    for bucket in scoped.ingestion.coordinator.vectors.collections.values():
+        for row in bucket.values():
+            row["embedding"] = [.1, 1., 0.]
+    response = ask(scoped, [doc], stream=stream)
+    if stream:
+        events = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+        end = next(event for event in events if event["type"] == "end")
+        assert end["answer_kind"] == "refusal" and end["retrieved_chunks"] == []
+        assert not any(event["type"] == "token" for event in events)
+    else:
+        assert response.json()["answer_kind"] == "refusal"
+        assert response.json()["retrieved_chunks"] == []
+    assert not Generator.contexts
 
 
 def test_rrf_changes_only_ranking_and_does_not_create_an_evidence_score():
@@ -256,47 +249,23 @@ def test_rrf_changes_only_ranking_and_does_not_create_an_evidence_score():
 
 
 @pytest.mark.parametrize("stream", [False, True])
-def test_insufficient_keyword_candidate_never_enters_generation_context(monkeypatch, stream):
-    from app.services import query_service
-    from app.models.schemas import QueryRequest
-
-    agent, _ = make_agent(bm25=True)
-    service = query_service.QueryService()
-    service._agent = agent
-    contexts = []
-
-    class Generator:
-        async def agenerate_response(self, query, context_chunks):
-            contexts.append(context_chunks)
-            return {"answer": "【结论】等待期为90天。", "success": True}
-
-        async def agenerate_stream(self, query, context_chunks):
-            contexts.append(context_chunks)
-            yield "【结论】等待期为90天。"
-
-    async def save(*args, **kwargs):
-        return 1
-
-    monkeypatch.setattr(service, "_has_llm_credentials", lambda: True)
-    monkeypatch.setattr(service, "_spawn_bg", lambda coro: coro.close())
-    monkeypatch.setattr(service, "_save_query_history", save)
-    monkeypatch.setattr(query_service.LLMService, "with_model", lambda *a, **kw: Generator())
-    monkeypatch.setattr(rag_workflow.settings, "ENABLE_QUERY_REWRITING", False)
-    monkeypatch.setattr(rag_workflow.settings, "SIMPLE_RAG_MODE", True)
-
-    async def run():
-        response = await service.process_query(None, QueryRequest(question="等待期多久？"), stream=stream)
-        if stream:
-            messages = [line async for line in response]
-            events = [json.loads(line[6:].strip()) for line in messages if line.startswith("data: ")]
-            response = next(event for event in events if event.get("type") == "end")
-            assert response["confidence_score"] == 1
-        else:
-            assert response.answer_kind == "answer" and response.confidence_score == 1
-
-    asyncio.run(run())
-    assert len(contexts) == 1
-    assert [c["chunk_id"] for c in contexts[0]] == ["a"]
+def test_insufficient_keyword_candidate_never_enters_generation_context(scoped, monkeypatch, stream):
+    from test_scoped_query_api import Generator, QueryEncoder, ready, ask
+    doc = ready(scoped, pages=["The waiting period is 90 days.", "The waiting period is 180 days."])
+    monkeypatch.setattr(QueryEncoder, "embed_query", lambda self, q: [1., 0., 0.])
+    for bucket in scoped.ingestion.coordinator.vectors.collections.values():
+        for row in bucket.values():
+            row["embedding"] = [1., 0., 0.] if row["metadata"]["page_number"] == 1 else [.1, 1., 0.]
+    response = ask(scoped, [doc], stream=stream)
+    assert response.status_code == 200
+    if stream:
+        events = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+        data = next(event for event in events if event["type"] == "end")
+    else:
+        data = response.json()
+    assert data["answer_kind"] == "answer" and data["confidence_score"] == 1
+    assert len(Generator.contexts) == 1
+    assert [c["page_number"] for c in Generator.contexts[0][1]] == [1]
 
 
 def test_cli_ingestion_prepares_shared_source_text_without_legacy_publication(tmp_path):
@@ -325,3 +294,8 @@ def test_cli_ingestion_prepares_shared_source_text_without_legacy_publication(tm
     finally:
         service.stop()
         engine.dispose()
+
+# Explicit-scope API fixtures replace the retired unscoped service mocks.
+from test_scoped_query_api import scoped  # noqa: E402,F401
+from test_document_api import api  # noqa: E402,F401
+from test_index_coordinator import library  # noqa: E402,F401
