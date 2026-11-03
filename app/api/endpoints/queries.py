@@ -14,7 +14,7 @@ from app.core.app_logging import get_logger
 from app.models.database_models import QueryHistory
 from app.models.schemas import (
     QueryRequest, QueryResponse, QueryHistoryResponse, QueryHistoryListResponse,
-    FeedbackRequest, QueryStatistics, ErrorResponse, BatchQueryRequest
+    FeedbackRequest, QueryStatistics, ErrorResponse, BatchQueryRequest, SessionSelectionRequest
 )
 from app.services.query_service import QueryService
 from app.services.query_sessions import history_fields
@@ -24,6 +24,19 @@ router = APIRouter()
 
 # 模块级单例：避免每次请求都重新初始化 Agent 等重资源
 query_service = QueryService()
+
+
+@router.post("/session", summary="准备文档选择范围与会话 epoch")
+async def prepare_selection(selection: SessionSelectionRequest,
+                            request: Request, db: AsyncSession = Depends(get_db)):
+    import asyncio
+    from app.services.query_scope import validate_scope
+    from app.services.query_sessions import prepare_session
+    if selection.document_ids:
+        await validate_scope(db, selection)
+    prepared = await asyncio.to_thread(prepare_session, request.app.state.index_coordinator, selection)
+    return {"session_id": prepared.session_id, "scope_epoch": prepared.epoch,
+            "scope_fingerprint": prepared.fingerprint, "document_ids": selection.document_ids}
 
 
 @router.get("/test")

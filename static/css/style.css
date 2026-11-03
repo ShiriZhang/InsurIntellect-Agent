@@ -1116,3 +1116,19 @@ a {
 .ui-toast[hidden] {
   display: none !important;
 }
+
+/* Document selection is independent from the citation viewer. */
+.document-library { flex: 0 1 auto; max-height: 42%; overflow: auto; padding: .65rem 1rem; border-bottom: 1px solid hsl(var(--border)); background: #f7fbff; }
+.document-library summary { cursor: pointer; font-weight: 600; }
+.library-actions { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .5rem; }
+#uploadFiles { max-width: 100%; font-size: .75rem; }
+.library-note { margin: .35rem 0; font-size: .75rem; color: #475569; white-space: pre-wrap; overflow-wrap: anywhere; }
+.document-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .35rem; padding: .45rem 0; border-top: 1px solid #dce7f0; align-items: center; }
+.document-row label { min-width: 0; overflow-wrap: anywhere; font-size: .8rem; }
+.document-state { display: block; margin-left: 1.4rem; font-size: .72rem; color: #475569; white-space: pre-wrap; }
+.query-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .55rem 1rem; border-bottom: 1px solid hsl(var(--border)); font-size: .75rem; }
+.query-controls select { max-width: 100%; padding: .2rem; border-radius: .3rem; border: 1px solid #b6c8d6; background: white; }
+#scopeStatus { flex-basis: 100%; }
+.message-provenance { font-size: .72rem; color: #52647b; margin-bottom: .4rem; overflow-wrap: anywhere; }
+.cite-card.is-deleted { cursor: default; opacity: .75; border-style: dashed; }
+@media (max-width: 860px) { .document-library { max-height: 190px; } .query-controls { gap: .35rem; } }

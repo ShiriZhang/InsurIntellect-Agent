@@ -3,3 +3,6 @@
 pytest>=8.0.0
 ruff>=0.6.0
 httpx>=0.28.1
+
+# Browser interaction regression (install a browser with python -m playwright install chromium)
+playwright>=1.50.0

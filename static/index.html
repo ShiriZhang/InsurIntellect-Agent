@@ -54,6 +54,18 @@
             <span id="pageBadge" class="page-badge" hidden></span>
           </div>
         </div>
+        <details class="document-library" open>
+          <summary>文档库 · 选择本次问答范围</summary>
+          <div class="library-actions">
+            <label class="btn btn-outline btn-xs" for="uploadFiles">上传 PDF</label>
+            <input id="uploadFiles" type="file" accept=".pdf,application/pdf" multiple />
+            <button type="button" id="clearSelection" class="btn btn-outline btn-xs">清空选择</button>
+          </div>
+          <p id="libraryLimits" class="library-note">每份最多 200 页；仅支持文字 PDF。新文档就绪后需手动勾选。</p>
+          <p id="libraryNotice" class="library-note" role="status" aria-live="polite"></p>
+          <p id="uploadStatus" class="library-note" role="status" aria-live="polite"></p>
+          <div id="documentList" class="document-list">正在读取文档库…</div>
+        </details>
         <div id="evidenceStrip" class="evidence-strip" hidden>
           <div class="evidence-strip-top">
             <span class="evidence-label">当前证据</span>
@@ -94,11 +106,17 @@
             </div>
           </div>
           <label class="stream-label">
-            <input type="checkbox" id="streamToggle" />
+            <input type="checkbox" id="streamToggle" checked />
             <span>流式输出</span>
           </label>
         </div>
 
+        <div class="query-controls">
+          <label>回答语言 <select id="answerLanguage" aria-label="回答语言"><option value="auto">跟随问题</option><option value="zh">中文</option><option value="en">English</option></select></label>
+          <label>问答方式 <select id="queryMode" aria-label="问答方式"><option value="auto">自动识别</option><option value="qa">普通问答</option><option value="compare">逐文档比较（最多 5 份）</option></select></label>
+          <span id="scopeStatus" role="status">请先勾选可提问文档</span>
+          <span id="modeStatus" role="status">当前方式：自动识别</span>
+        </div>
         <div class="ai-window" id="aiWindow">
           <div id="messages" class="messages" hidden></div>
 

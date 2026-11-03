@@ -2,6 +2,8 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+**Document uploads, explicit scopes, bilingual QA and deletion:** [User guide](docs/user-guide.md) · [API contract](docs/document-query-api.md)
+
 <div align="center">
 
 <img src="docs/screenshots/logo-192.png" width="160" alt="InsurIntellect icon — citation card with evidence chip"/>
@@ -79,7 +81,7 @@ Insurance wording is high-stakes. Waiting periods, exclusions, deductibles, and 
 1. **Clause corpus first.** The answer must come from indexed PDFs, not model memory.
 2. **Provenance over fluency.** Every grounded answer exposes document / page / excerpt citations.
 3. **Boundary as a product feature.** Purchase advice, guaranteed payout claims, and off-topic questions are refused instead of softened into generic chat.
-4. **Reproducible demo.** Public synthetic samples, forced BGE + threshold in `run_demo`, fixed smoke cases (Q1/Q2/Q3/weather), CI without live LLM keys.
+4. **Reproducible demo.** Public synthetic samples, fingerprinted local embeddings, fixed smoke cases (Q1/Q2/Q3/weather), CI without live LLM keys.
 
 ---
 
@@ -207,8 +209,8 @@ Key capabilities include:
 | Capability | Detail |
 |------------|--------|
 | Clause corpus first | Public fake sample PDFs only; no real customer policies in-repo |
-| Hybrid retrieval | Chroma + BM25/jieba; default embed `hf:BAAI/bge-small-zh-v1.5` |
-| Score gate | `SIMILARITY_THRESHOLD=0.32` for BGE; demo scripts force ingest/query consistency |
+| Hybrid retrieval | Chroma + BM25/jieba; local multilingual embedding, default candidate `BAAI/bge-m3` |
+| Score gate | Cosine evidence gate; calibrate the configured threshold for the actual local model/profile |
 | Cited answers | Conclusion / clause basis / boundary + disclaimer line |
 | Honest refuse | Weather, purchase advice, “guaranteed payout” → boundary, not free chat |
 | Public citation policy | Answer keeps real scores; refuse/advice → `[]` |
@@ -219,90 +221,25 @@ Key capabilities include:
 
 ## Quickstart
 
-### 1. Clone and environment
+See the [English user guide](docs/user-guide.md) for configuration and the complete walkthrough.
 
 ```bash
-git clone https://github.com/Phoenix0531-sudo/InsurIntellect-Agent.git
-cd InsurIntellect-Agent
-
-uv venv .venv --python 3.11
-# Windows: .venv\Scripts\activate
-source .venv/bin/activate
-uv pip install -r requirements-dev.txt
-
-cp .env.example .env
-# set OPENAI_BASE_URL / OPENAI_API_KEY for your OpenAI-compatible gateway
-# preferred embedding (must match ingest + query):
-# OPENAI_EMBEDDING_MODEL=hf:BAAI/bge-small-zh-v1.5
-# SIMILARITY_THRESHOLD=0.32
-# offline fallback: OPENAI_EMBEDDING_MODEL=local:hash  (re-ingest after switch)
+python -m pip install -r requirements.txt
+# Copy .env.example to .env; configure LOCAL_EMBEDDING_* and GENERATION_* separately
+python -m scripts.prepare_models --download
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8766
 ```
 
-### 2. Sample corpus + ingest
-
-```bash
-uv run python scripts/generate_sample_corpus.py --copy-to-data
-uv run python -m scripts.simple_ingest --pdf-dir samples
-```
-
-Samples are **public synthetic clauses** (waiting period, exclusions, free-look, etc.), not real policies.
-
-The shared ingestion service now prepares and publishes versioned Chroma/keyword indexes. The CLI waits for `ready=true` by default; queuing or preparing a candidate alone is insufficient. See [ingestion and CLI states](docs/document-ingestion.md) and [publication/recovery](docs/index-publication.md). `--reset` is rejected to protect other documents; index readiness does not replace real-model QA acceptance.
-
-### 3. One-command demo server
-
-Shell env can pollute `.env`. Prefer the demo launcher, which **re-forces** BGE + threshold:
-
-```bash
-bash scripts/run_demo.sh
-# Windows: scripts\run_demo.bat
-```
-
-Or manually:
-
-```bash
-export HOST=127.0.0.1 PORT=8766
-export OPENAI_EMBEDDING_MODEL=hf:BAAI/bge-small-zh-v1.5
-export SIMILARITY_THRESHOLD=0.32
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-export SIMPLE_RAG_MODE=true
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8766
-```
-
-Open **http://127.0.0.1:8766/**  
-API docs (when `DEBUG=true`): **http://127.0.0.1:8766/docs**
-
-If the LLM key is missing, the API still returns an honest **LLM unavailable** path instead of inventing coverage.
-
-### 4. Optional Docker service
-
-Use Compose when you want a persistent local service with a predictable container name:
-
-```bash
-docker compose up -d --build
-docker compose ps
-# container: insurintellect-agent
-# URL: http://[IP]:8766/
-```
-
-The Compose file intentionally sets `container_name: insurintellect-agent` to avoid anonymous or ambiguous Docker Desktop entries. The Docker image uses `requirements-docker.txt` and `OPENAI_EMBEDDING_MODEL=local:hash` by default so the container can build and expose health quickly without downloading torch/HuggingFace weights; use the uv path above for the full BGE demo.
-
-### 5. Fixed smoke (server must be up)
-
-```bash
-# Linux/macOS/git-bash
-.venv/bin/python scripts/demo_smoke.py
-# Windows
-.venv\Scripts\python.exe scripts\demo_smoke.py
-```
-
-Covers Q1 / Q2 / Q3 / off-topic weather and asserts `answer_kind` + citation honesty.
-
-Optional empty-index honesty matrix (isolated Windows temp dirs, no live corpus):
-
-```bash
-.venv/Scripts/python.exe scripts/empty_index_smoke.py
-```
+Open the local app, upload text PDFs, wait for readiness and explicitly select documents.
+New ready documents do not expand selection. Streaming is on by default; choose answer
+language and ordinary QA or comparison of at most five documents. Preview is independent
+from query scope. Models download/cache once and encode locally; CPU fallback can be slower.
+The generation API receives only the necessary question/context/evidence.
+Public synthetic `samples/` can be uploaded or imported with
+`python -m scripts.simple_ingest --pdf-dir samples`. Deletion clears managed sources and
+historical excerpts while retaining answer bodies. The [real-service browser walkthrough](docs/reviews/batch-8-operation.md)
+does not replace formal quality acceptance. A lightweight Docker liveness check does not
+establish complete QA readiness; deployment profiles and legacy-script migration are separate work.
 
 ---
 
@@ -319,11 +256,15 @@ Optional empty-index honesty matrix (isolated Windows temp dirs, no live corpus)
 
 ## API
 
+Use ready IDs from the document library. Missing/null/empty scopes or any invalid source return 422; no implicit whole-library search occurs.
+
 | Method | Path | Notes |
 |--------|------|--------|
 | `GET` | `/api/v1/health/` | DB / vector / LLM status |
-| `GET` | `/api/v1/corpus` | Indexed document list for the left pane |
-| `POST` | `/api/v1/queries/ask` | Body: `{ "question": "...", "stream": false }` |
+| `GET` | `/api/v1/corpus` | Document-library compatibility projection, including processing state |
+| `GET/POST` | `/api/v1/documents` | Library, uploads and processing state |
+| `GET/DELETE` | `/api/v1/documents/{id}` | Detail and recoverable deletion; original at `/{id}/file` |
+| `POST` | `/api/v1/queries/ask` | Body: `{ "question": "...", "document_ids": [1], "stream": true }` |
 
 Stable response fields include `question`, `answer`, `answer_kind`, `retrieved_chunks[]` (`document_name`, `page_number`, `content`, `similarity_score`), `chunks_used`, `confidence_score`, `response_time`.
 
@@ -334,7 +275,7 @@ Example:
 ```bash
 curl -s http://127.0.0.1:8766/api/v1/queries/ask \
   -H 'Content-Type: application/json' \
-  -d '{"question":"等待期是多久？","stream":false}'
+  -d '{"question":"等待期是多久？","document_ids":[1],"answer_language":"auto","query_mode":"auto","stream":true}'
 ```
 
 ---
@@ -408,7 +349,6 @@ Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 - Full PDF.js reader as a product requirement (assets may exist for highlight demos)
 - Productized text-to-SQL / KG / multi-agent orchestration UI
 
-Docker is optional but now follows the same **8766** service port. Compose fixes the readable container name as `insurintellect-agent`, so it is easy to identify in Docker Desktop. The container defaults to `local:hash` embeddings for fast health/demo startup; the uv path remains the recommended route for the full BGE retrieval demo.
 
 ---
 
@@ -416,7 +356,6 @@ Docker is optional but now follows the same **8766** service port. Compose fixes
 
 - **LLM**: any OpenAI-compatible base URL (portfolio default: local new-api, e.g. `http://127.0.0.1:31876/v1`). Do not commit keys.
 - **Embeddings**: keep ingest and query on the same local model/profile. After a model change, follow the [profile rebuild and ingestion guide](docs/document-ingestion.md); directory-wide `--reset` is no longer supported.
-- **Hash fallback** `local:hash` is for offline demos only; ranking is weaker — lower threshold only if you knowingly use hash.
 
 ---
 

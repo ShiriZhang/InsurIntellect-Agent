@@ -39,9 +39,25 @@
   const resizeHandle = document.getElementById("resizeHandle");
 
   let pdfs = [];
+  let documents = [];
+  let selectedIds = [];
+  let selectionLoaded = false;
+  let scopeEpoch = 0;
+  let scopeSync = Promise.resolve();
+  let libraryRevision = 0;
+  let libraryRenderSignature = null;
+  let currentRequest = null;
+  const deletedIds = new Set();
+  const documentList = document.getElementById("documentList");
+  const uploadFiles = document.getElementById("uploadFiles");
+  const queryMode = document.getElementById("queryMode");
+  const answerLanguage = document.getElementById("answerLanguage");
+  const scopeStatus = document.getElementById("scopeStatus");
+  const modeStatus = document.getElementById("modeStatus");
+
   let activeSources = [];
   let lastStickyView = null;
-  const sessionId = (function () {
+  let sessionId = (function () {
     try {
       const k = "insur_session_id";
       let v = localStorage.getItem(k);
@@ -61,6 +77,8 @@
   let citeSeq = 0;
   let debugMode = false;
   let lastEmbeddingProvider = null;
+  let pdfOpenSequence = 0;
+  let pdfRenderTask = null;
   let pdfDocCache = { url: null, doc: null, renderToken: 0 };
 
   const DISPLAY_FALLBACK = {
@@ -155,7 +173,7 @@
       "[" +
       (index || "?") +
       "] " +
-      name +
+      name + " · #" + source.document_id +
       (page != null && page !== "" ? " · p." + page : "");
     evidenceExcerpt.textContent = excerpt || "（无摘录）";
   }
@@ -196,10 +214,16 @@
         : 1;
     const token = ++pdfDocCache.renderToken;
     try {
+      if (pdfRenderTask) {
+        pdfRenderTask.cancel();
+        await pdfRenderTask.promise.catch(() => {});
+      }
       if (pdfDocCache.url !== url || !pdfDocCache.doc) {
         const loadingTask = window.pdfjsLib.getDocument({ url: url });
         const doc = await loadingTask.promise;
-        if (token !== pdfDocCache.renderToken) return false;
+        if (token !== pdfDocCache.renderToken) { await doc.destroy(); return false; }
+        if (pdfDocCache.doc) await pdfDocCache.doc.destroy();
+        if (token !== pdfDocCache.renderToken) { await doc.destroy(); return false; }
         pdfDocCache = { url: url, doc: doc, renderToken: token };
       }
       const doc = pdfDocCache.doc;
@@ -233,11 +257,10 @@
         pdfHighlightLayer.style.height = canvas.style.height;
       }
 
-      await pdfPage.render({
-        canvasContext: ctx,
-        viewport: viewport,
-        transform: transform,
-      }).promise;
+      const renderTask = pdfPage.render({canvasContext:ctx, viewport:viewport, transform:transform});
+      pdfRenderTask = renderTask;
+      await renderTask.promise;
+      if (pdfRenderTask === renderTask) pdfRenderTask = null;
       if (token !== pdfDocCache.renderToken) return false;
 
       // Text layer for selection + highlight targeting
@@ -345,6 +368,7 @@
       pdfJsView.hidden = false;
       return true;
     } catch (err) {
+      if (token !== pdfDocCache.renderToken) return false;
       console.warn("PDF.js render failed, falling back to iframe", err);
       if (typeof showToast === "function") {
         showToast("无法高亮摘录，已打开原页");
@@ -355,8 +379,9 @@
 
   async function openCitedPdf(docName, pageNumber, source, index, opts) {
     opts = opts || {};
-    const hit = resolvePdfByName(docName);
-    if (!hit || !hit.url) {
+    const viewSequence = ++pdfOpenSequence;
+    const hit = pdfs.find(p => Number(p.document_id) === Number(source && source.document_id));
+    if (!hit || !hit.url || deletedIds.has(Number(hit.document_id)) || (source && source.source_status === "deleted")) {
       if (opts.forceEmpty !== false && !lastStickyView) {
         hidePdfViews();
         pdfSelect.hidden = true;
@@ -377,6 +402,7 @@
     );
 
     currentView = {
+      document_id: hit.document_id,
       name: hit.name,
       url: hit.url,
       page: page,
@@ -389,7 +415,7 @@
     });
 
     const nice = hit.display_name || displayNameFor(hit.name, source || {});
-    pdfTitle.textContent = nice;
+    pdfTitle.textContent = nice + " · #" + hit.document_id;
     pdfSubtitle.textContent = page
       ? "定位到引用页 p." + page
       : "答案引用的条款原文";
@@ -401,28 +427,12 @@
       pageBadge.textContent = "";
     }
 
-    if (pdfs.length) {
-      pdfSelect.hidden = false;
-      pdfSelect.innerHTML = pdfs
-        .map(function (p) {
-          const sel = p.url === hit.url ? " selected" : "";
-          const label = p.display_name || displayNameFor(p.name, p);
-          return (
-            '<option value="' +
-            escapeHtml(p.url) +
-            '"' +
-            sel +
-            ">" +
-            escapeHtml(label) +
-            "</option>"
-          );
-        })
-        .join("");
-    }
+    populatePdfSelect(hit.document_id);
 
     if (source) setEvidence(source, index);
 
     const ok = await renderPdfJs(hit.url, page || 1, excerpt);
+    if (viewSequence !== pdfOpenSequence || deletedIds.has(Number(hit.document_id)) || Number(currentView.document_id) !== Number(hit.document_id)) return false;
     if (!ok) {
       // iframe fallback
       const hash = page && page > 0 ? "#page=" + page : "";
@@ -437,8 +447,15 @@
     return true;
   }
 
+  function populatePdfSelect(documentId) {
+    pdfSelect.hidden = !pdfs.length || documentId == null;
+    pdfSelect.innerHTML = pdfs.map(pdf => '<option value="' + pdf.document_id + '">' +
+      escapeHtml((pdf.display_name || pdf.name) + " · #" + pdf.document_id) + '</option>').join("");
+    if (documentId != null) pdfSelect.value = String(documentId);
+  }
+
   function firstAnswerCiteIndex(answerText) {
-    const m = String(answerText || "").match(/\[(\d+)\]/);
+    const m = String(answerText || "").match(/(?:\[|【)(\d+)(?:\]|】)/);
     if (!m) return 1;
     const n = parseInt(m[1], 10);
     return n > 0 ? n : 1;
@@ -468,7 +485,7 @@
     const nextPage = src.page_number ?? src.page;
     if (
       lastStickyView &&
-      basename(lastStickyView.name || "") === nextName &&
+      Number(lastStickyView.document_id) === Number(src.document_id) &&
       Number(lastStickyView.page) === Number(nextPage) &&
       !opts.force
     ) {
@@ -486,7 +503,7 @@
 
   function setLoading(v, stage) {
     isLoading = v;
-    sendBtn.disabled = v || !String(input.value || "").trim();
+    sendBtn.disabled = v || !selectedIds.length || !String(input.value || "").trim();
     if (genPill) {
       genPill.hidden = !v;
       if (v) setStatus(stage || "generate");
@@ -545,36 +562,206 @@
   }
 
 
-  async function loadCorpus() {
-    try {
-      const res = await fetch("/api/v1/corpus");
-      if (!res.ok) throw new Error("语料接口 " + res.status);
-      const data = await res.json();
-      const docs = data.documents || [];
-      pdfs = docs
-        .map(function (d) {
-          const name = d.name || d.document_name || d.filename || "document.pdf";
-          let url = d.url;
-          if (!url && name) url = "/samples/" + encodeURIComponent(name);
-          return {
-            name: name,
-            url: url,
-            pages: d.pages,
-            display_name:
-              d.display_name || DISPLAY_FALLBACK[basename(name)] || null,
-          };
-        })
-        .filter(function (p) {
-          return !!p.url;
-        });
+  function errorText(data) {
+    const detail = data && (data.detail || data.message || data.error);
+    return typeof detail === "string" ? detail : JSON.stringify(detail || data || "请求失败");
+  }
 
-      const chunks = data.chunk_count != null ? data.chunk_count : "—";
-      corpusMeta.textContent = pdfs.length + " 份文档 · " + chunks + " 片段";
-    } catch (err) {
-      corpusMeta.textContent = "语料加载失败";
-      showError(err.message || String(err));
+  function persistSelection() {
+    try { localStorage.setItem("insur_document_ids", JSON.stringify(selectedIds)); } catch (_) {}
+  }
+
+  function syncScope() {
+    const ids = selectedIds.slice();
+    const epoch = scopeEpoch;
+    const sid = sessionId;
+    scopeSync = scopeSync.catch(() => {}).then(async () => {
+      const res = await fetch("/api/v1/queries/session", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({session_id: sid, document_ids: ids})
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(errorText(data));
+      return data;
+    }).catch(err => {
+      if (epoch === scopeEpoch && sid === sessionId) {
+        showError("范围准备失败，请刷新文档库重试：" + err.message);
+      }
+      return {error:err};
+    });
+  }
+
+  function changeSelection(ids) {
+    const next = [...new Set(ids.map(Number))].filter(id => documents.some(d => d.document_id === id && d.ready && !deletedIds.has(id))).sort((a,b) => a-b);
+    if (JSON.stringify(next) !== JSON.stringify(selectedIds)) {
+      selectedIds = next;
+      libraryRenderSignature = null;
+      scopeEpoch += 1;
+      syncScope();
+    }
+    persistSelection();
+    updateScopeLabel();
+  }
+
+  function updateScopeLabel() {
+    scopeStatus.textContent = selectedIds.length ? "本次范围：" + selectedIds.map(id => "#" + id).join("、") + "（" + selectedIds.length + " 份）" : "请先勾选可提问文档；空选择不会查询全库";
+    sendBtn.disabled = isLoading || !selectedIds.length || !String(input.value || "").trim();
+  }
+
+  function clearPdfSource() {
+    pdfOpenSequence += 1;
+    if (pdfRenderTask) { pdfRenderTask.cancel(); pdfRenderTask = null; }
+    pdfDocCache.renderToken += 1;
+    if (pdfDocCache.doc) pdfDocCache.doc.destroy().catch(() => {});
+    pdfDocCache.doc = null;
+    pdfDocCache.url = null;
+    if (pdfCanvas) pdfCanvas.getContext("2d").clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+    pdfTextLayer.innerHTML = "";
+    pdfHighlightLayer.innerHTML = "";
+    currentView = {name:null, url:null, page:null, index:null, excerpt:""};
+    lastStickyView = null;
+    hidePdfViews();
+    setEvidence(null);
+    pdfSelect.hidden = true;
+    pageBadge.hidden = true;
+    pdfTitle.textContent = "引用原文";
+    pdfSubtitle.textContent = "来源已删除或不可用";
+  }
+
+  function invalidateSources(ids) {
+    ids.forEach(id => deletedIds.add(Number(id)));
+    if (currentRequest && currentRequest.document_ids.some(id => deletedIds.has(id))) {
+      currentRequest.cancelReason = "来源删除，回答已中止；部分输出不是完整答案。";
+      currentRequest.controller.abort();
+    }
+    document.querySelectorAll(".message.is-assistant").forEach(row => {
+      if (!(row._sources || []).some(src => deletedIds.has(Number(src.document_id)))) return;
+      const sources = row._sources.map(src => deletedIds.has(Number(src.document_id)) ? {
+        chunk_id:src.chunk_id, document_id:src.document_id, document_name:src.document_name,
+        page_number:src.page_number, source_status:"deleted"
+      } : src);
+      setAssistantBody(row, row._answerText, sources, {...row._meta, source_status:"deleted"}, {silent:true});
+    });
+    activeSources = activeSources.map(src => deletedIds.has(Number(src.document_id)) ? {
+      document_id:src.document_id, document_name:src.document_name, page_number:src.page_number, source_status:"deleted"
+    } : src);
+    if (deletedIds.has(Number(currentView.document_id))) clearPdfSource();
+  }
+
+  function renderLibrary() {
+    const signature = JSON.stringify([documents, selectedIds, [...deletedIds]]);
+    if (signature === libraryRenderSignature) return;
+    libraryRenderSignature = signature;
+    const focused = documentList.contains(document.activeElement) ? document.activeElement : null;
+    const focusAttribute = focused && ["data-id", "data-preview", "data-delete"].find(name => focused.hasAttribute(name));
+    const focusValue = focusAttribute && focused.getAttribute(focusAttribute);
+    const phase = {pending:"待处理",queued:"排队中",parsing:"解析中",indexing:"索引中",ready:"可提问",failed:"处理失败"};
+    const deletionPhase = {invalidate:"取消相关工作",indexes:"清理检索索引",original:"清理原文件",history:"清理历史摘录",chunks:"清理正文片段",complete:"完成检查"};
+    const failure = {page_limit_exceeded:"超过 200 页上限，整份文件未入库",file_too_large:"超过文件大小限制",not_pdf:"文件不是有效 PDF",damaged_pdf:"PDF 损坏或无法读取",encrypted_pdf:"暂不支持加密 PDF",empty_pdf:"PDF 没有页面",no_readable_text:"未找到可读取文字",unreadable_pages:"含扫描或不可读内容，整份拒收",local_embedding_unavailable:"本地模型未就绪，请准备模型后重传",input_budget_exceeded:"正文片段超出安全处理预算",index_publication_failed:"索引发布失败，请检查服务后重传"};
+    const cleanupFailure = {index_readers_or_cleanup_pending:"等待索引读取释放",source_readers_still_releasing:"等待原文读取释放",native_ingestion_still_releasing_source:"等待本地处理释放原文",OSError:"文件清理失败，请重试",PermissionError:"文件被占用或权限不足，请关闭外部阅读器后重试",RuntimeError:"请检查存储配置和文件路径后重试"};
+    documentList.innerHTML = documents.length ? documents.map(doc => {
+      const removed = doc.deletion_status !== "none" || deletedIds.has(doc.document_id);
+      const state = removed ? (doc.deletion_status === "deleted" ? "来源已删除" : "删除中 · " + (deletionPhase[doc.deletion_stage] || "等待清理")) : (phase[doc.processing_status] || doc.processing_status);
+      const errors = (failure[doc.error_code] || (doc.error_code || doc.error_message ? "处理失败，请检查文件或服务后重试" : "")) + ((doc.error_pages || []).length ? " · 失败页：" + doc.error_pages.join(", ") : "") + (doc.deletion_error ? " · 清理未完成：" + (cleanupFailure[doc.deletion_error] || "请重试或检查服务记录") : "");
+      const retry = doc.deletion_task_status === "failed";
+      return '<div class="document-row" data-document-id="' + doc.document_id + '"><label><input type="checkbox" class="document-check" data-id="' + doc.document_id + '"' + (selectedIds.includes(doc.document_id) ? ' checked' : '') + (!doc.ready || removed ? ' disabled' : '') + '> ' + escapeHtml(doc.name) + ' · #' + doc.document_id + '<span class="document-state">' + escapeHtml(state + (doc.page_count ? " · " + doc.page_count + " 页" : "") + (errors ? " · " + errors : "")) + '</span></label><button type="button" class="btn btn-outline btn-xs" data-preview="' + doc.document_id + '"' + (removed || !doc.file_url ? ' disabled' : '') + '>预览</button>' + (doc.deletion_status === "deleted" ? '' : '<button type="button" class="btn btn-outline btn-xs" data-delete="' + doc.document_id + '"' + (removed && !retry ? ' disabled' : '') + '>' + (retry ? "重试删除" : "删除") + '</button>') + '</div>';
+    }).join("") : '<p class="library-note">文档库为空。上传文字 PDF 后，等待可提问并手动勾选。</p>';
+    if (focusAttribute) {
+      const target = documentList.querySelector("[" + focusAttribute + "='" + focusValue + "']");
+      if (target && !target.disabled) target.focus();
     }
   }
+
+  async function loadCorpus() {
+    const revision = ++libraryRevision;
+    try {
+      const res = await fetch("/api/v1/documents", {cache:"no-store"});
+      if (!res.ok) throw new Error("文档库接口 " + res.status);
+      const data = await res.json();
+      if (revision !== libraryRevision) return;
+      documents = data.documents || [];
+      const invalid = documents.filter(d => d.deletion_status !== "none").map(d => d.document_id);
+      if (invalid.length) invalidateSources(invalid);
+      pdfs = documents.filter(d => d.file_url && d.deletion_status === "none" && !deletedIds.has(d.document_id)).map(d => ({...d, url:d.file_url, display_name:d.name, pages:d.page_count}));
+      if (currentView.document_id != null) populatePdfSelect(currentView.document_id);
+      if (!selectionLoaded) {
+        let saved = [];
+        try { saved = JSON.parse(localStorage.getItem("insur_document_ids") || "[]"); } catch (_) {}
+        if (!Array.isArray(saved)) saved = [];
+        selectionLoaded = true;
+        changeSelection(saved);
+        if (!selectedIds.length) syncScope();
+      } else {
+        changeSelection(selectedIds);
+      }
+      renderLibrary();
+      const count = documents.filter(d => d.deletion_status !== "deleted").length;
+      corpusMeta.textContent = count + " 份文档";
+      document.getElementById("libraryLimits").textContent = "每份最多 " + data.max_pages + " 页、" + Math.round(data.upload_max_bytes / 1024 / 1024) + " MiB；仅支持文字 PDF，扫描/混合扫描整份拒收。";
+      document.getElementById("libraryNotice").textContent = data.capacity_warning || "新文档就绪后需手动勾选；引用预览不会改变问答范围。";
+      uploadFiles.dataset.maxBytes = data.upload_max_bytes;
+    } catch (err) {
+      corpusMeta.textContent = "文档库加载失败";
+      showError(err.message);
+    }
+  }
+
+  documentList.addEventListener("change", event => {
+    if (!event.target.matches(".document-check")) return;
+    const id = Number(event.target.dataset.id);
+    changeSelection(event.target.checked ? selectedIds.concat(id) : selectedIds.filter(i => i !== id));
+  });
+  document.getElementById("clearSelection").addEventListener("click", () => {
+    const wasEmpty = selectedIds.length === 0;
+    changeSelection([]);
+    if (wasEmpty) { scopeEpoch += 1; syncScope(); }
+    renderLibrary();
+  });
+  documentList.addEventListener("click", async event => {
+    const preview = event.target.closest("[data-preview]");
+    if (preview) {
+      const doc = documents.find(d => d.document_id === Number(preview.dataset.preview));
+      if (doc) openCitedPdf(doc.name, 1, {document_id:doc.document_id, document_name:doc.name}, 1, {});
+    }
+    const button = event.target.closest("[data-delete]");
+    if (!button || button.disabled) return;
+    const doc = documents.find(d => d.document_id === Number(button.dataset.delete));
+    if (!doc || !window.confirm("删除 #" + doc.document_id + "「" + doc.name + "」？将清除原文件与引用摘录，保留已有答案正文。")) return;
+    button.disabled = true;
+    try {
+      const res = await fetch("/api/v1/documents/" + doc.document_id, {method:"DELETE"});
+      const data = await res.json();
+      if (!res.ok) throw new Error(errorText(data));
+      invalidateSources([doc.document_id]);
+      changeSelection(selectedIds.filter(id => id !== doc.document_id));
+      renderLibrary();
+      await loadCorpus();
+    } catch (err) { button.disabled = false; showError(err.message); }
+  });
+  uploadFiles.addEventListener("change", async () => {
+    const files = Array.from(uploadFiles.files || []);
+    const status = document.getElementById("uploadStatus");
+    uploadFiles.disabled = true;
+    const results = [];
+    try {
+      for (const file of files) {
+        status.textContent = "上传中：" + file.name;
+        if (file.size > Number(uploadFiles.dataset.maxBytes || Infinity)) {
+          results.push(file.name + "：超过文件大小限制");
+          continue;
+        }
+        const body = new FormData(); body.append("file", file);
+        try {
+          const res = await fetch("/api/v1/documents", {method:"POST", body});
+          const data = await res.json();
+          if (!res.ok) throw new Error(errorText(data));
+          results.push(file.name + "：" + (res.status === 200 ? "已存在" : "已接收，后台处理中") + " · #" + data.document_id);
+        } catch (err) { results.push(file.name + "：" + err.message); }
+        await loadCorpus();
+      }
+    } finally { status.textContent = results.join("\n"); uploadFiles.value = ""; uploadFiles.disabled = false; }
+  });
+  async function pollLibrary() { await loadCorpus(); setTimeout(pollLibrary, 1800); }
 
   async function loadHealth() {
     try {
@@ -590,7 +777,7 @@
   }
 
   function linkCitations(escapedText) {
-    return escapedText.replace(/\[(\d+)\]/g, function (_m, n) {
+    return escapedText.replace(/(?:\[|【)(\d+)(?:\]|】)/g, function (_m, n) {
       return (
         '<button type="button" class="cite-ref" data-cite-index="' +
         n +
@@ -605,27 +792,24 @@
 
   function formatAnswerHtml(text) {
     const raw = String(text || "");
-    const sectionRe =
-      /【\s*(结论|条款依据|不确定[/／]?边界|边界)\s*】\s*([\s\S]*?)(?=【\s*(?:结论|条款依据|不确定[/／]?边界|边界)\s*】|$)/g;
+    const sectionRe = /(?:【\s*(结论|条款依据|不确定[/／]?边界|边界)\s*】|\[(Conclusion|Clause evidence|Uncertainty\s*\/\s*boundaries)\])\s*([\s\S]*?)(?=【\s*(?:结论|条款依据|不确定[/／]?边界|边界)\s*】|\[(?:Conclusion|Clause evidence|Uncertainty\s*\/\s*boundaries)\]|$)/gi;
     const parts = [];
     let m;
-    while ((m = sectionRe.exec(raw)) !== null) {
-      parts.push({ title: m[1], body: (m[2] || "").trim() });
-    }
+    while ((m = sectionRe.exec(raw)) !== null) parts.push({title:m[1] || m[2], body:(m[3] || "").trim()});
     if (parts.length >= 2) {
       const blocks = parts
         .map(function (p) {
           let kind = "is-evidence";
           let label = p.title;
-          if (p.title.indexOf("结论") >= 0) {
+          if (p.title.indexOf("结论") >= 0 || /conclusion/i.test(p.title)) {
             kind = "is-conclusion";
-            label = "结论";
-          } else if (p.title.indexOf("依据") >= 0) {
+            label = /conclusion/i.test(p.title) ? "Conclusion" : "结论";
+          } else if (p.title.indexOf("依据") >= 0 || /evidence/i.test(p.title)) {
             kind = "is-evidence";
-            label = "条款依据";
+            label = /evidence/i.test(p.title) ? "Clause evidence" : "条款依据";
           } else {
             kind = "is-boundary";
-            label = "不确定 / 边界";
+            label = /uncertainty/i.test(p.title) ? "Uncertainty / boundaries" : "不确定 / 边界";
           }
           return (
             '<section class="answer-section ' +
@@ -693,12 +877,7 @@
 
   function citationsHtml(sources, groupId) {
     if (!sources || !sources.length) return "";
-    const visible = sources.filter(function (s) {
-      if (s == null) return false;
-      if (s.similarity_score == null || s.similarity_score === "") return true;
-      const n = Number(s.similarity_score);
-      return !(Number.isFinite(n) && n <= 0);
-    });
+    const visible = sources;
     if (!visible.length) return "";
     const cards = visible
       .map(function (s, i) {
@@ -707,14 +886,15 @@
           s
         );
         const page = s.page_number ?? s.page ?? "—";
-        const excerpt = cleanExcerpt(s.content || s.excerpt || s.text || "");
+        const removed = s.source_status === "deleted" || deletedIds.has(Number(s.document_id));
+        const excerpt = removed ? "来源已删除 · 原文摘录不可用" : cleanExcerpt(s.content || s.excerpt || s.text || "");
         let score = "";
         if (s.similarity_score != null && s.similarity_score !== "") {
           const n = Number(s.similarity_score);
           if (Number.isFinite(n) && n > 0) score = n.toFixed(3);
         }
         return (
-          '<button type="button" class="cite-card" data-cite-index="' +
+          '<button type="button" class="cite-card' + (removed ? ' is-deleted" disabled' : '"') + ' data-cite-index="' +
           (i + 1) +
           '" data-cite-group="' +
           groupId +
@@ -724,7 +904,7 @@
           (i + 1) +
           "]</span>" +
           '<span class="cite-doc">' +
-          escapeHtml(name) +
+          escapeHtml(name + " · #" + s.document_id) +
           "</span>" +
           '<span class="cite-page">p.' +
           escapeHtml(String(page)) +
@@ -772,7 +952,11 @@
       insufficient_evidence: "拒答 / 无充分依据",
       advice: "边界 / 不构成建议",
       llm_unavailable: "LLM 不可用 · 仅检索",
-      degraded: "降级响应",
+      degraded: "未完成",
+      cancelled: "已取消 · 部分输出不是完整答案",
+      timeout: "超时 · 回答未完成",
+      clarification: "请澄清或修改问答方式",
+      local_unavailable: "本地模型 / 索引不可用",
       answer: "",
     };
     const label = map[k] || "";
@@ -803,7 +987,8 @@
     return div;
   }
 
-  function setAssistantBody(row, answerText, sources, meta) {
+  function setAssistantBody(row, answerText, sources, meta, opts) {
+    opts = opts || {};
     meta = meta || {};
     const body = row.querySelector(".message-body");
     if (!body) return;
@@ -826,7 +1011,8 @@
     row.classList.add(kindClass(kind));
 
     // During stream we may pass preformatted; for final always rebuild
-    body.innerHTML =
+    const provenance = meta.document_ids ? '<div class="message-provenance">范围 ' + escapeHtml(meta.document_ids.join(", ")) + ' · ' + escapeHtml(meta.query_mode || "qa") + ' · ' + escapeHtml(meta.answer_language || "auto") + ' · epoch ' + escapeHtml(meta.scope_epoch ?? "—") + '</div>' : '';
+    body.innerHTML = provenance +
       kindBadge(kind) +
       formatAnswerHtml(answerText || "") +
       citationsHtml(sources || [], groupId) +
@@ -834,6 +1020,7 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
 
     // P1: only open PDF/evidence after final setAssistantBody (never mid-stream)
+    if (opts.silent || (row._scopeEpoch != null && row._scopeEpoch !== scopeEpoch)) return;
     if (sources && sources.length) {
       followAnswerCitation(sources, answerText || {}, { force: false });
       const idx = firstAnswerCiteIndex(answerText);
@@ -875,6 +1062,7 @@
     const i = Number(index) - 1;
     if (i < 0 || i >= list.length) return;
     const s = list[i];
+    if (s.source_status === "deleted" || deletedIds.has(Number(s.document_id))) { showToast("来源已删除"); return; }
     openCitedPdf(
       s.document_name || s.source || s.filename,
       s.page_number ?? s.page,
@@ -895,174 +1083,131 @@
     } else if (Array.isArray(data.citations)) {
       list = data.citations;
     }
-    return list.slice(0, 4);
+    return list.map(src => deletedIds.has(Number(src.document_id)) ? {chunk_id:src.chunk_id, document_id:src.document_id, document_name:src.document_name, page_number:src.page_number, source_status:"deleted"} : src);
   }
 
   function responseMeta(data) {
     data = data || {};
     return {
+      document_ids:data.document_ids, query_mode:data.query_mode, answer_language:data.answer_language,
+      scope_epoch:data.scope_epoch, session_id:data.session_id, source_status:data.source_status,
       answer_kind: data.answer_kind || "answer",
       embedding_provider: data.embedding_provider || lastEmbeddingProvider,
       confidence_score: data.confidence_score,
     };
   }
 
-  async function askOnce(question) {
+  async function askOnce(snapshot) {
     const res = await fetch("/api/v1/queries/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question: question,
-        stream: false,
-        show_sources: true,
-        session_id: sessionId,
-      }),
-      signal: abortController ? abortController.signal : undefined,
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(snapshot.body), signal:snapshot.controller.signal
     });
-    const data = await res.json().catch(function () {
-      return {};
-    });
-    if (!res.ok && !data.answer) {
-      throw new Error(data.detail || data.message || "提问失败 " + res.status);
-    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(errorText(data));
     return data;
   }
 
-  async function askStream(question, onDelta, onFinal) {
+  async function askStream(snapshot, onDelta, onFinal) {
     const res = await fetch("/api/v1/queries/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question: question,
-        stream: true,
-        show_sources: true,
-        session_id: sessionId,
-      }),
-      signal: abortController ? abortController.signal : undefined,
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(snapshot.body), signal:snapshot.controller.signal
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(function () {
-        return {};
-      });
-      throw new Error(
-        errData.detail || errData.message || "流式失败 " + res.status
-      );
-    }
-    if (!res.body || !res.body.getReader) {
-      onFinal(await res.json());
-      return;
-    }
+    if (!res.ok) throw new Error(errorText(await res.json().catch(() => ({}))));
+    if (!res.body || !res.body.getReader) throw new Error("浏览器无法读取答案流，请关闭流式后重试。");
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "";
-    let full = "";
-    let finalPayload = null;
-    // P1: ignore mid-stream context/chunks — only use end/final for citations+PDF
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n");
-      buffer = parts.pop() || "";
-      for (let i = 0; i < parts.length; i++) {
-        let line = parts[i].trim();
-        if (!line) continue;
-        if (line.startsWith("data:")) line = line.slice(5).trim();
-        if (!line || line === "[DONE]") continue;
-        try {
-          const obj = JSON.parse(line);
-          if (obj.type === "token" || obj.delta || obj.token) {
-            full += obj.token || obj.delta || obj.content || "";
-            onDelta(full);
-          } else if (obj.type === "context") {
-            // intentionally ignore mid-stream chunks (prevent left-pane flash)
-          } else if (
-            obj.type === "end" ||
-            obj.type === "final" ||
-            obj.answer ||
-            (obj.retrieved_chunks && obj.type !== "context")
-          ) {
-            finalPayload = obj.data || obj;
-            if (obj.answer || obj.type === "end") finalPayload = obj;
-            if (obj.answer && !full) full = obj.answer;
-          }
-        } catch (_e) {
-          // non-json lines: treat as token only if look like plain text
-          if (line[0] !== "{" && line[0] !== "[") {
-            full += line;
-            onDelta(full);
-          }
-        }
+    let buffer = "", full = "", finalPayload = null;
+    function consume(block) {
+      const data = block.split(/\r?\n/).filter(line => line.startsWith("data:")).map(line => line.slice(5).trimStart()).join("\n");
+      if (!data || data === "[DONE]") return;
+      const obj = JSON.parse(data);
+      if (obj.type === "start" && snapshot.epoch === scopeEpoch) modeStatus.textContent = "本次方式：" + modeLabel(obj.query_mode);
+      if (obj.type === "token") { full += obj.content || ""; onDelta(full); }
+      if (obj.type === "end") finalPayload = obj;
+      if (obj.type === "error") throw new Error(obj.message || "答案流异常中止");
+    }
+    try {
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream:true});
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop() || "";
+        blocks.forEach(consume);
       }
-    }
-    if (finalPayload && !finalPayload.answer && full) {
-      finalPayload.answer = full;
-    }
-    onFinal(finalPayload || { answer: full, retrieved_chunks: [] });
+      buffer += decoder.decode();
+      if (buffer.trim()) consume(buffer);
+      if (!finalPayload) throw new Error("答案流提前结束，部分输出不是完整答案。");
+      onFinal(finalPayload);
+    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
   }
+
+  function modeLabel(mode) { return ({auto:"自动识别",qa:"普通问答",compare:"逐文档比较",clarification:"请澄清或手动选择方式"})[mode] || mode; }
+  queryMode.addEventListener("change", () => { modeStatus.textContent = "当前方式：" + modeLabel(queryMode.value); });
 
   async function handleAsk(question) {
     const q = String(question || "").trim();
     if (!q || isLoading) return;
+    if (!selectedIds.length) { showError("请先勾选至少一份可提问文档。"); return; }
+    if (queryMode.value === "compare" && selectedIds.length > 5) { showError("最多比较 5 份文档，请缩小范围。"); return; }
+    const snapshot = {
+      body:{question:q, document_ids:selectedIds.slice(), answer_language:answerLanguage.value,
+        query_mode:queryMode.value, stream:streamToggle.checked, show_sources:true, session_id:sessionId},
+      document_ids:selectedIds.slice(), epoch:scopeEpoch, preparation:scopeSync, controller:new AbortController(), cancelReason:null
+    };
+    currentRequest = snapshot;
+    abortController = snapshot.controller;
     showError("");
     setLoading(true, "retrieve");
-    abortController = new AbortController();
-    ensureMessagesVisible();
-    appendMessage("user", escapeHtml(q));
-    const assistantRow = appendMessage("assistant", "…", "is-pending");
-    setStatus("generate");
-
+    let assistantRow;
     try {
-      if (streamToggle && streamToggle.checked) {
-        await askStream(
-          q,
-          function (partial) {
-            setStatus("generate");
-            const body = assistantRow.querySelector(".message-body");
-            // P1: mid-stream tokens only — no citations, no PDF open
-            if (body) body.innerHTML = formatAnswerHtml(partial);
-          },
-          function (data) {
-            setAssistantBody(
-              assistantRow,
-              data.answer || data.response || "",
-              normalizeSources(data),
-              responseMeta(data)
-            );
-          }
-        );
-      } else {
-        const data = await askOnce(q);
-        setAssistantBody(
-          assistantRow,
-          data.answer || data.response || "（空响应）",
-          normalizeSources(data),
-          responseMeta(data)
-        );
+      const preparation = await snapshot.preparation;
+      if (!preparation || preparation.error) throw (preparation && preparation.error) || new Error("范围尚未准备完成");
+      snapshot.body.scope_epoch = preparation.scope_epoch;
+      if (snapshot.controller.signal.aborted) throw new DOMException("Stopped", "AbortError");
+      ensureMessagesVisible();
+      appendMessage("user", escapeHtml(q));
+      assistantRow = appendMessage("assistant", "…", "is-pending");
+      assistantRow._scopeEpoch = snapshot.epoch;
+      setStatus("generate");
+      function finish(data) {
+        if (snapshot.cancelReason || snapshot.document_ids.some(id => deletedIds.has(id))) {
+          setAssistantBody(assistantRow, snapshot.cancelReason || "来源已删除，回答已中止。", [], {answer_kind:"cancelled", document_ids:snapshot.document_ids});
+          return;
+        }
+        if (snapshot.epoch === scopeEpoch) modeStatus.textContent = "本次方式：" + modeLabel(data.query_mode);
+        setAssistantBody(assistantRow, data.answer || data.response || "", normalizeSources(data), responseMeta(data));
       }
+      if (snapshot.body.stream) {
+        await askStream(snapshot, partial => {
+          const body = assistantRow.querySelector(".message-body");
+          if (body && !snapshot.cancelReason) body.innerHTML = formatAnswerHtml(partial);
+        }, finish);
+      } else { finish(await askOnce(snapshot)); }
     } catch (err) {
-      if (err.name === "AbortError") {
-        setAssistantBody(assistantRow, "已停止。", [], { answer_kind: "degraded" });
-      } else {
-        showError(err.message || String(err));
-        setAssistantBody(
-          assistantRow,
-          "请求失败：" + (err.message || String(err)),
-          [],
-          { answer_kind: "degraded" }
-        );
-      }
+      if (err.name !== "AbortError") showError(err.message || String(err));
+      if (assistantRow) setAssistantBody(assistantRow, snapshot.cancelReason || (err.name === "AbortError" ? "已停止，回答未完成。" : "请求未完成：" + err.message), [], {answer_kind:"cancelled", document_ids:snapshot.document_ids});
     } finally {
-      setLoading(false);
-      abortController = null;
-      input.value = "";
-      input.focus();
-      sendBtn.disabled = true;
+      if (currentRequest === snapshot) {
+        currentRequest = null;
+        abortController = null;
+        setLoading(false);
+        input.value = "";
+        input.focus();
+        updateScopeLabel();
+      }
     }
   }
 
   function resetChat() {
-    if (abortController) abortController.abort();
+    if (currentRequest) { currentRequest.cancelReason = "已开始新对话，旧回答已停止。"; currentRequest.controller.abort(); }
+    currentRequest = null;
+    abortController = null;
+    sessionId = "s_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem("insur_session_id", sessionId); } catch (_) {}
+    scopeEpoch += 1;
+    syncScope();
+    clearPdfSource();
     setLoading(false);
     showError("");
     messagesEl.innerHTML = "";
@@ -1097,25 +1242,10 @@
   });
 
   pdfSelect.addEventListener("change", function () {
-    const url = pdfSelect.value;
-    const hit = pdfs.find(function (p) {
-      return p.url === url;
-    });
+    const hit = pdfs.find(p => p.document_id === Number(pdfSelect.value));
     if (!hit) return;
-    const match =
-      activeSources.find(function (s) {
-        return (
-          basename(s.document_name || "").toLowerCase() ===
-          basename(hit.name).toLowerCase()
-        );
-      }) || null;
-    openCitedPdf(
-      hit.name,
-      (match && (match.page_number ?? match.page)) || currentView.page || null,
-      match || { document_name: hit.name, content: "" },
-      currentView.index || 1,
-      {}
-    );
+    const match = activeSources.find(src => Number(src.document_id) === hit.document_id);
+    openCitedPdf(hit.name, (match && match.page_number) || 1, match || {document_id:hit.document_id, document_name:hit.name}, 1, {});
   });
 
   form.addEventListener("submit", function (e) {
@@ -1124,7 +1254,7 @@
   });
 
   input.addEventListener("input", function () {
-    sendBtn.disabled = isLoading || !String(input.value || "").trim();
+    updateScopeLabel();
   });
 
   input.addEventListener("keydown", function (e) {
@@ -1198,7 +1328,7 @@
     });
   })();
 
-  loadCorpus();
+  pollLibrary();
   loadHealth();
   sendBtn.disabled = true;
 })();

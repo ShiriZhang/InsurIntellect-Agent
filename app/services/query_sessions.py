@@ -22,12 +22,19 @@ def prepare_session(coordinator, request):
     session_id = request.session_id or uuid4().hex
     fingerprint = digest(request.document_ids)
     with coordinator.transaction() as db:
-        current = db.scalars(select(SessionScope).where(SessionScope.session_id == session_id)
-                             .order_by(SessionScope.epoch.desc())).first()
-        if current is None or current.invalidated or current.scope_fingerprint != fingerprint:
-            current = SessionScope(session_id=session_id, epoch=1 if current is None else current.epoch + 1,
-                                   scope_fingerprint=fingerprint, document_ids_json=json.dumps(request.document_ids))
-            db.add(current)
+        requested_epoch = getattr(request, "scope_epoch", None)
+        if requested_epoch is not None:
+            current = db.get(SessionScope, (session_id, requested_epoch))
+            if current is None or current.invalidated or current.scope_fingerprint != fingerprint:
+                from fastapi import HTTPException
+                raise HTTPException(422, "The submitted scope epoch is invalid or no longer available")
+        else:
+            current = db.scalars(select(SessionScope).where(SessionScope.session_id == session_id)
+                                 .order_by(SessionScope.epoch.desc())).first()
+            if current is None or current.invalidated or current.scope_fingerprint != fingerprint:
+                current = SessionScope(session_id=session_id, epoch=1 if current is None else current.epoch + 1,
+                                       scope_fingerprint=fingerprint, document_ids_json=json.dumps(request.document_ids))
+                db.add(current)
         previous = db.scalars(select(QueryHistory).where(
             QueryHistory.session_id == session_id, QueryHistory.scope_epoch == current.epoch,
             QueryHistory.scope_status == "known", QueryHistory.source_status == "active")

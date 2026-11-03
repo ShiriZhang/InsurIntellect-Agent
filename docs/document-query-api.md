@@ -129,3 +129,18 @@ input directories and user-owned backups are not traversed or erased. Re-uploadi
 identical bytes after successful deletion creates a new document ID; old citations
 remain deleted. This is application-level erasure of readable managed material,
 not a secure-wipe promise for storage media or an external generation provider.
+
+## Browser selection preparation
+
+`POST /api/v1/queries/session` accepts `session_id` and explicit `document_ids`.
+Nonempty selections must consist entirely of ready IDs. This endpoint records a
+scope epoch without generating an answer; an empty list records an explicit clear.
+It never retrieves evidence or enables an empty-scope ask. The browser serializes
+selection updates so A → empty → A resets follow-up context even without an
+intervening question. Ask/batch still require explicit nonempty scopes.
+
+The browser includes the returned `scope_epoch` in each ask snapshot. A delayed
+request keeps that exact historical scope epoch and cannot advance or populate a
+newly selected epoch, even after A → B → A. Invalid/invalidated or mismatched
+epochs return 422. API callers omitting this optional field retain scope-at-request
+preparation; callers managing selection separately should bind the returned epoch.

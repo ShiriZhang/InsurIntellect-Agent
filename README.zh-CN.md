@@ -2,6 +2,8 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+**文档库上传、显式范围、双语问答与删除：** [用户说明](docs/user-guide.zh-CN.md) · [接口合同](docs/document-query-api.md)
+
 <div align="center">
 
 <img src="docs/screenshots/logo-192.png" width="160" alt="InsurIntellect 图标 — 带证据芯片的引用卡片"/>
@@ -79,7 +81,7 @@ InsurIntellect 是一个面向本地保险文档的条款证据型 AI Agent。�
 1. **条款语料优先。** 回答必须来自已索引 PDF，而不是模型记忆。
 2. **溯源优先于流畅。** 有据回答必须展示文档 / 页码 / 摘录。
 3. **边界也是产品功能。** 购保建议、保证获赔、离题问题直接拒答，而不是包装成泛泛聊天。
-4. **可复现演示。** 公开合成样例、`run_demo` 强制 BGE + 阈值、固定 smoke（Q1/Q2/Q3/天气）、CI 不依赖在线 LLM Key。
+4. **可复现演示。** 公开合成样例、固定本地模型指纹与显式文档范围、固定 smoke（Q1/Q2/Q3/天气）、CI 不依赖在线 LLM Key。
 
 ---
 
@@ -207,8 +209,8 @@ UI 壳为静态 HTML/CSS/JS（ChatPDF 式双栏，主色 `#1D9CFF`）；产品�
 | 能力 | 说明 |
 |------|------|
 | 条款语料优先 | 仓库仅公开假样例 PDF，不提交真实客户保单 |
-| 混合检索 | Chroma + BM25/jieba；默认嵌入 `hf:BAAI/bge-small-zh-v1.5` |
-| 分数门闩 | BGE 下 `SIMILARITY_THRESHOLD=0.32`；demo 脚本强制入库 / 查询一致 |
+| 混合检索 | Chroma + BM25/jieba；本地多语言 embedding，默认评测候选 `BAAI/bge-m3` |
+| 分数门闩 | cosine 证据门槛；须针对实际本地模型/profile 校准配置阈值 |
 | 带引用回答 | 结论 / 条款依据 / 边界 + 一行免责 |
 | 诚实拒答 | 天气、购保建议、「保证获赔」→ 边界，不当闲聊 |
 | 对外引用策略 | answer 保留真实得分；refuse/advice → `[]` |
@@ -219,90 +221,22 @@ UI 壳为静态 HTML/CSS/JS（ChatPDF 式双栏，主色 `#1D9CFF`）；产品�
 
 ## 快速开始
 
-### 1. 克隆与环境
+完整准备与网页操作见[中文用户说明](docs/user-guide.zh-CN.md)。
 
 ```bash
-git clone https://github.com/Phoenix0531-sudo/InsurIntellect-Agent.git
-cd InsurIntellect-Agent
-
-uv venv .venv --python 3.11
-# Windows: .venv\Scripts\activate
-source .venv/bin/activate
-uv pip install -r requirements-dev.txt
-
-cp .env.example .env
-# 填写 OPENAI_BASE_URL / OPENAI_API_KEY（OpenAI 兼容网关）
-# 推荐嵌入（入库与查询必须一致）：
-# OPENAI_EMBEDDING_MODEL=hf:BAAI/bge-small-zh-v1.5
-# SIMILARITY_THRESHOLD=0.32
-# 离线回退：OPENAI_EMBEDDING_MODEL=local:hash（切换后必须重新 ingest）
+python -m pip install -r requirements.txt
+# 复制 .env.example 为 .env，分别配置 LOCAL_EMBEDDING_* 与 GENERATION_*
+python -m scripts.prepare_models --download
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8766
 ```
 
-### 2. 样例语料与入库
-
-```bash
-uv run python scripts/generate_sample_corpus.py --copy-to-data
-uv run python -m scripts.simple_ingest --pdf-dir samples
-```
-
-样例为 **公开合成条款**（等待期、责任免除、犹豫期等），不是真实保单。
-
-共用入库服务已接入版本化 Chroma/关键词一致发布。CLI 默认等待 `ready=true`，只入队或准备候选尚不足以提问。状态与操作见[入库与 CLI 说明](docs/document-ingestion.md)和[发布/恢复说明](docs/index-publication.md)。`--reset` 会明确拒绝，以免清空其他文档；索引 ready 不替代真实模型问答验收。
-
-### 3. 一键演示服务
-
-Shell 环境可能污染 `.env`。优先用 demo 启动脚本（会 **再次强制** BGE + 阈值）：
-
-```bash
-bash scripts/run_demo.sh
-# Windows: scripts\run_demo.bat
-```
-
-或手动：
-
-```bash
-export HOST=127.0.0.1 PORT=8766
-export OPENAI_EMBEDDING_MODEL=hf:BAAI/bge-small-zh-v1.5
-export SIMILARITY_THRESHOLD=0.32
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-export SIMPLE_RAG_MODE=true
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8766
-```
-
-浏览器：**http://127.0.0.1:8766/**  
-OpenAPI（`DEBUG=true` 时）：**http://127.0.0.1:8766/docs**
-
-无 API Key 时：接口走诚实的 **LLM 不可用** 路径，不静默编造保障范围。
-
-### 4. 可选 Docker 服务
-
-需要长期放在 Docker Desktop 里运行时，优先用 Compose，容器名固定、可识别：
-
-```bash
-docker compose up -d --build
-docker compose ps
-# container: insurintellect-agent
-# URL: http://[IP]:8766/
-```
-
-`docker-compose.yml` 明确设置 `container_name: insurintellect-agent`，避免出现一堆匿名项目容器时分不清哪个是哪个。Docker 镜像默认使用 `requirements-docker.txt` 与 `OPENAI_EMBEDDING_MODEL=local:hash`，因此能快速构建并暴露 health，不会默认下载 torch / HuggingFace 权重；完整 BGE 演示仍推荐走上面的 uv 路径。
-
-### 5. 固定回归（服务需已启动）
-
-```bash
-# Linux/macOS/git-bash
-.venv/bin/python scripts/demo_smoke.py
-# Windows
-.venv\Scripts\python.exe scripts\demo_smoke.py
-```
-
-覆盖 Q1 / Q2 / Q3 / 离题天气，并检查 `answer_kind` 与引用诚实性。
-
-可选空索引诚实矩阵（Windows 合法临时目录，不碰正式语料）：
-
-```bash
-.venv\Scripts\python.exe scripts\empty_index_smoke.py
-```
+上传文字 PDF，等待可提问后手动勾选；新 ready 文档不会扩展已有选择。
+默认流式，可选回答语言、普通问答或最多五文档比较。引用预览独立于查询选择。
+模型首次下载后本地编码，设备回退可能变慢；生成 API 只接收必要的问题与证据。
+样例 `samples/` 为公开合成条款，可网页上传，或用
+`python -m scripts.simple_ingest --pdf-dir samples` 导入。删除清理托管来源及历史摘录，保留答案正文。
+[真实服务浏览器操作记录](docs/reviews/batch-8-operation.md)不替代正式质量验收。
+轻量 Docker 的应用存活检查不能证明完整问答就绪；部署配置和旧脚本迁移另行交付。
 
 ---
 
@@ -319,11 +253,15 @@ docker compose ps
 
 ## API
 
+范围 ID 须取自可提问文档；省略、null、空列表或混入无效来源均返回 422，不默认查询全库。
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `GET` | `/api/v1/health/` | 数据库 / 向量库 / LLM 状态 |
 | `GET` | `/api/v1/corpus` | 左栏文档列表 |
-| `POST` | `/api/v1/queries/ask` | Body：`{ "question": "...", "stream": false }` |
+| `GET/POST` | `/api/v1/documents` | 文档库、上传与状态 |
+| `GET/DELETE` | `/api/v1/documents/{id}` | 详情、可恢复删除；原文件为 `/{id}/file` |
+| `POST` | `/api/v1/queries/ask` | Body：`{ "question": "...", "document_ids": [1], "stream": true }` |
 
 稳定字段：`question`、`answer`、`answer_kind`、`retrieved_chunks[]`（`document_name`、`page_number`、`content`、`similarity_score`）、`chunks_used`、`confidence_score`、`response_time`。
 
@@ -334,7 +272,7 @@ docker compose ps
 ```bash
 curl -s http://127.0.0.1:8766/api/v1/queries/ask \
   -H 'Content-Type: application/json' \
-  -d '{"question":"等待期是多久？","stream":false}'
+  -d '{"question":"等待期是多久？","document_ids":[1],"answer_language":"auto","query_mode":"auto","stream":true}'
 ```
 
 ---
@@ -408,7 +346,6 @@ GitHub Actions 跑同一套 critical ruff + `pytest tests/`，**不要求** 在�
 - 完整 PDF 阅读器作为一期硬需求（资源可能用于高亮演示）
 - 产品化 text-to-SQL / KG / 多 Agent 编排 UI
 
-Docker 可选，但现在也统一使用 **8766** 服务端口。Compose 固定容器名为 `insurintellect-agent`，方便在 Docker Desktop 里识别。容器默认使用 `local:hash` 嵌入以便快速健康启动；完整 BGE 检索演示仍以 uv 本地路径为主。
 
 ---
 
@@ -416,7 +353,6 @@ Docker 可选，但现在也统一使用 **8766** 服务端口。Compose 固定�
 
 - **LLM**：任意 OpenAI 兼容 Base URL（作品集默认本机 new-api，如 `http://127.0.0.1:31876/v1`）。禁止提交密钥。
 - **嵌入**：入库与查询必须使用相同的本地模型/profile。切换模型后按[重建与入库说明](docs/document-ingestion.md)处理；不再支持目录级 `--reset`。
-- **Hash 回退** `local:hash` 仅适合离线演示，排序较弱——仅在明确使用 hash 时再调低阈值。
 
 ---
 

@@ -59,10 +59,21 @@ class QueryRequest(BaseModel):
     answer_language: Literal["auto", "zh", "en"] = "auto"
     query_type: str = Field(default="general", description="查询类型")
     session_id: Optional[str] = None
+    scope_epoch: Optional[Annotated[int, Field(strict=True, gt=0)]] = None
     stream: Optional[bool] = False
     show_sources: Optional[bool] = True
 
     model_config = ConfigDict(extra="ignore")
+
+    @field_validator("document_ids")
+    @classmethod
+    def normalize_scope(cls, values):
+        return sorted(set(values))
+
+
+class SessionSelectionRequest(BaseModel):
+    session_id: str = Field(min_length=1, max_length=128)
+    document_ids: List[Annotated[int, Field(strict=True, gt=0)]]
 
     @field_validator("document_ids")
     @classmethod
