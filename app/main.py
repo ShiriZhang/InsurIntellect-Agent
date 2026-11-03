@@ -87,6 +87,11 @@ async def lifespan(app: FastAPI):
     ingestion = DocumentIngestionService()
     app.state.document_ingestion = ingestion
     app.state.index_coordinator = ingestion.coordinator
+    from app.services.document_deletion import DocumentDeletionService
+    deletion = DocumentDeletionService(ingestion)
+    app.state.document_deletion = deletion
+    await asyncio.to_thread(deletion.recover)
+    deletion.start()
     try:
         await asyncio.to_thread(ingestion.coordinator.recover)
     except Exception as exc:
@@ -96,6 +101,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await asyncio.to_thread(deletion.stop)
         await asyncio.to_thread(ingestion.stop)
 
     # 关闭时执行

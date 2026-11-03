@@ -53,6 +53,7 @@ class _SharedState:
         self.writer = threading.RLock()
         self.readers = {}
         self.views = weakref.WeakSet()
+        self.requests = weakref.WeakSet()
         self.current = None
         self.serving = False
         self.writer_owner = None
@@ -309,6 +310,9 @@ class IndexCoordinator:
                 if task.status != "superseded":
                     task.status = "cancelled"
         with self.state.lock:
+            for request in list(self.state.requests):
+                if invalid.intersection(request.document_ids):
+                    request.cancel()
             for view in list(self.state.views):
                 if invalid.intersection(view.document_ids):
                     view.cancel("source_deleted")

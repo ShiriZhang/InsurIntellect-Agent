@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class RetrievedChunk(BaseModel):
     """One retrieved clause chunk returned to API / UI."""
 
+    source_status: str = "active"
     chunk_id: Union[int, str] = -1
     document_id: Union[int, str] = -1
     document_name: str = "未知文档"
@@ -27,6 +28,9 @@ class DocumentResponse(BaseModel):
     name: str
     processing_status: str
     deletion_status: str
+    deletion_stage: Optional[str] = None
+    deletion_error: Optional[str] = None
+    deletion_task_status: Optional[str] = None
     ready: bool
     page_count: Optional[int] = None
     language: Optional[str] = None

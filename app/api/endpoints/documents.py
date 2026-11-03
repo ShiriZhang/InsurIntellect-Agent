@@ -4,13 +4,13 @@ import asyncio
 import json
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.database_models import Document
+from app.models.database_models import Document, DeletionTask
 from app.models.schemas import DocumentListResponse, DocumentResponse
 from app.services.document_storage import SourceUnavailable
 
@@ -40,8 +40,14 @@ async def list_documents(request: Request, db: AsyncSession = Depends(get_db)):
     ready_ids = set(await asyncio.to_thread(service.coordinator.ready_ids))
     docs = (await db.execute(select(Document).order_by(Document.id))).scalars().all()
     count = sum(d.deletion_status != "deleted" for d in docs)
+    tasks = {task.document_id: task for task in (await db.execute(select(DeletionTask))).scalars()}
+    projected = [project_document(d, ready_ids) for d in docs]
+    for doc in projected:
+        if doc.document_id in tasks:
+            task = tasks[doc.document_id]
+            doc.deletion_stage, doc.deletion_error, doc.deletion_task_status = task.stage, task.error_message, task.status
     return DocumentListResponse(
-        documents=[project_document(d, ready_ids) for d in docs],
+        documents=projected,
         upload_max_bytes=settings.UPLOAD_MAX_BYTES, max_pages=200, design_capacity=50,
         capacity_warning="超过 50 份设计规模，仍可继续上传。" if count > 50 else None,
     )
@@ -53,7 +59,14 @@ async def document_detail(document_id: int, request: Request, db: AsyncSession =
     if doc is None:
         raise HTTPException(404, "Unknown document ID")
     ready_ids = set(await asyncio.to_thread(ingestion_service(request).coordinator.ready_ids))
-    return project_document(doc, ready_ids)
+    result = project_document(doc, ready_ids)
+    from app.models.database_models import DeletionTask
+    task = await db.get(DeletionTask, document_id)
+    if task:
+        result.deletion_stage = task.stage
+        result.deletion_error = task.error_message
+        result.deletion_task_status = task.status
+    return result
 
 
 @router.post("", response_model=DocumentResponse, status_code=202)
@@ -92,5 +105,45 @@ async def document_file(document_id: int, request: Request, db: AsyncSession = D
         path = await asyncio.to_thread(ingestion_service(request).storage.original_path, document_id)
     except SourceUnavailable:
         raise HTTPException(410, "Original source unavailable") from None
-    return FileResponse(path, media_type="application/pdf", filename=doc.original_name or doc.filename,
-                        headers={"Cache-Control": "no-store"}, content_disposition_type="inline")
+    from app.services.source_requests import SourceRequest
+    from app.services.index_coordinator import SourceInvalidated
+    from urllib.parse import quote
+    try:
+        lease = SourceRequest(ingestion_service(request).coordinator, [document_id])
+    except SourceInvalidated:
+        raise HTTPException(410, "Original source unavailable") from None
+    async def original_bytes():
+        handle = None
+        try:
+            lease.check()
+            handle = await asyncio.to_thread(path.open, "rb")
+            while True:
+                block = await lease.wait(asyncio.to_thread(handle.read, 64 * 1024))
+                if not block:
+                    break
+                lease.check()
+                yield block
+        except SourceInvalidated:
+            return
+        finally:
+            if handle:
+                handle.close()
+            lease.close()
+    return StreamingResponse(original_bytes(), media_type="application/pdf", headers={
+        "Cache-Control": "no-store", "Content-Disposition":
+        "inline; filename*=UTF-8''" + quote(doc.original_name or doc.filename)})
+
+
+@router.delete("/{document_id}")
+async def delete_document(document_id: int, request: Request, response: Response):
+    from app.services.document_deletion import DocumentDeletionService
+    service = getattr(request.app.state, "document_deletion", None)
+    if service is None:
+        service = DocumentDeletionService(ingestion_service(request))
+        request.app.state.document_deletion = service
+    try:
+        state = await asyncio.to_thread(service.begin, document_id)
+    except KeyError:
+        raise HTTPException(404, "Unknown document ID") from None
+    response.status_code = 200 if state["status"] == "completed" else 202
+    return state

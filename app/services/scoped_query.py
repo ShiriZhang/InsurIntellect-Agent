@@ -47,6 +47,31 @@ class ScopedQueryProcessor:
             return vector
 
     async def process(self, db, request, *, coordinator, stream=False):
+        from app.services.source_requests import SourceRequest
+        await validate_scope(db, request)
+        try:
+            lease = SourceRequest(coordinator, request.document_ids)
+        except SourceInvalidated:
+            from fastapi import HTTPException
+            raise HTTPException(422, "Source is no longer queryable") from None
+        try:
+            response = await self._process(db, request, coordinator=coordinator, stream=stream, lease=lease)
+        except BaseException:
+            lease.close()
+            raise
+        if not stream:
+            lease.close()
+            return response
+        async def leased_events():
+            try:
+                async for event in response:
+                    yield event
+            finally:
+                await response.aclose()
+                lease.close()
+        return leased_events()
+
+    async def _process(self, db, request, *, coordinator, stream=False, lease):
         started = monotonic()
         names = await validate_scope(db, request)
         language = resolve_language(request.question, request.answer_language)
@@ -71,10 +96,10 @@ class ScopedQueryProcessor:
                 elif refusal_policy.is_off_topic(request.question, []):
                     answer, kind = terminal("refusal", language), "refusal"
                 else:
-                    vector = await asyncio.wait_for(asyncio.to_thread(self._encode, effective_question, view.commit.profile), settings.CONTEXT_BUILD_TIMEOUT_SECS)
-                    raw = await asyncio.to_thread(view.search, effective_question, vector,
+                    vector = await lease.wait(asyncio.wait_for(asyncio.to_thread(self._encode, effective_question, view.commit.profile), settings.CONTEXT_BUILD_TIMEOUT_SECS))
+                    raw = await lease.wait(asyncio.to_thread(view.search, effective_question, vector,
                                                   top_k=settings.MAX_RETRIEVED_CHUNKS,
-                                                  per_document=mode == "compare")
+                                                  per_document=mode == "compare"))
                     eligible = citation_policy.eligible_evidence(raw, settings.SIMILARITY_THRESHOLD)
                     if mode == "compare":
                         for doc_id in request.document_ids:
@@ -105,6 +130,13 @@ class ScopedQueryProcessor:
                 if view:
                     view.close()
                 raise
+
+        if chunks:
+            try:
+                lease.retain(chunks)
+            except SourceInvalidated:
+                chunks = []
+                answer, kind = terminal("cancelled", language), "cancelled"
 
         # Finalize evidence once. Generation, API, SSE and history use this order.
         for index, chunk in enumerate(chunks, 1):
@@ -145,6 +177,7 @@ class ScopedQueryProcessor:
                 embedding_provider=getattr(self.embedding, "provider", None))
 
         def check():
+            lease.check()
             if view:
                 view.assert_valid()
 
@@ -160,7 +193,7 @@ class ScopedQueryProcessor:
             try:
                 check()
                 if not answer:
-                    generated = await asyncio.wait_for(llm.agenerate_response(generation_question, chunks), settings.OPENAI_TIMEOUT_SECS)
+                    generated = await lease.wait(asyncio.wait_for(llm.agenerate_response(generation_question, chunks), settings.OPENAI_TIMEOUT_SECS))
                     kind = "answer" if generated.get("success", False) else ("timeout" if generated.get("error") == "timeout" else "llm_unavailable")
                     answer = generated.get("answer", "") if kind == "answer" else terminal(kind, language)
                 check()
@@ -192,7 +225,11 @@ class ScopedQueryProcessor:
                     upstream = llm.agenerate_stream(generation_question, chunks)
                     try:
                         async with asyncio.timeout(settings.OPENAI_TIMEOUT_SECS):
-                            async for token in upstream:
+                            while True:
+                                try:
+                                    token = await lease.wait(anext(upstream))
+                                except StopAsyncIteration:
+                                    break
                                 check()
                                 text += token
                                 yield event("token", {"content": token})

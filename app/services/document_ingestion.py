@@ -55,6 +55,7 @@ class DocumentIngestionService:
         self.worker_lock = IngestionWorkerLock(lock_path)
         self._stop = threading.Event()
         self._cancelled = set()
+        self._active_documents = set()
         self._state_lock = threading.RLock()
         self._thread = None
         self.last_error = None
@@ -113,6 +114,19 @@ class DocumentIngestionService:
             raise IngestionInterrupted()
         with Session(self.engine) as db:
             self._current(db, identity)
+
+    def source_lock(self, document_id):
+        return IngestionWorkerLock(self.worker_lock.path.with_name(self.worker_lock.path.name + f".source-{document_id}"))
+
+    def is_processing(self, document_id):
+        with self._state_lock:
+            if document_id in self._active_documents:
+                return True
+        lock = self.source_lock(document_id)
+        if not lock.acquire():
+            return True
+        lock.release()
+        return False
 
     def cancel(self, document_id):
         """Persist cancellation before a late parser/encoder can write its result."""
@@ -253,6 +267,11 @@ class DocumentIngestionService:
         identity = self._claim()
         if identity is None:
             return False
+        source_lock = self.source_lock(identity[0])
+        if not source_lock.acquire():
+            return False
+        with self._state_lock:
+            self._active_documents.add(identity[0])
         try:
             self._prepare(identity)
         except IngestionInterrupted:
@@ -274,6 +293,10 @@ class DocumentIngestionService:
         except Exception as exc:
             logger.error("Ingestion failed (%s)", type(exc).__name__)
             self._record_error(identity, "ingestion_failed")
+        finally:
+            with self._state_lock:
+                self._active_documents.discard(identity[0])
+            source_lock.release()
         return True
 
     def _publish_next(self):
@@ -312,6 +335,8 @@ class DocumentIngestionService:
             return False
         try:
             if self.coordinator is not None:
+                from app.services.document_deletion import DocumentDeletionService
+                DocumentDeletionService(self).recover()
                 self.coordinator.recover()
             self.recover()
             while not self._stop.is_set() and self.process_next():
@@ -337,6 +362,8 @@ class DocumentIngestionService:
                     continue
                 try:
                     if self.coordinator is not None:
+                        from app.services.document_deletion import DocumentDeletionService
+                        DocumentDeletionService(self).recover()
                         self.coordinator.recover()
                     self.recover()
                     while not self._stop.is_set():

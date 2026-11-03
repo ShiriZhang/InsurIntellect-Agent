@@ -90,7 +90,42 @@ refusals and service failures. Deletion/cancellation is checked again before sav
 a deleted source cannot be written back as a normal completed answer or citation.
 Interrupted streams end with an incomplete terminal outcome, or record cancellation
 when the client disconnects. Historical unknown scopes remain unknown and cannot
-be used for new follow-ups. Document deletion orchestration remains batch 7.
+be used for new follow-ups. Document deletion orchestration is described below.
 
 Offline regression uses explicit encoder/generation stand-ins; real bilingual
 model quality still requires the separate batch 10 acceptance run.
+
+## Deleting a source (batch 7)
+
+`DELETE /api/v1/documents/{id}` is idempotent: 202 means deletion is pending;
+200 means all managed cleanup completed; unknown IDs return 404. Poll document
+list/detail for `deletion_status`, `deletion_stage`, `deletion_task_status` and
+`deletion_error`. Failure remains `deleting` with task status `failed`; the worker
+retries automatically, and another DELETE requests a retry. No fake percentage
+or successful `deleted` status is returned while readers/native work/cleanup remain.
+
+Deletion first persists its tombstone, invalidates session epochs, blocks new
+queries and previews, and cancels related preparation and generation/SSE work.
+Deleting A during A+B comparison cancels the entire answer; B-only work survives.
+Blocked upstream generation is interrupted and closed rather than waiting for a
+new token. File streams check source identity on every read. Native encoders
+cannot be killed safely: their late results are discarded and cleanup waits for
+their document lease. Read leases work across local application/CLI processes.
+
+The worker erases controlled originals, SQLite chunks/checkpoints, source vectors,
+BM25/source snapshots and managed old/temporary versions. It rebuilds the remaining
+index from existing local checkpoints without loading a model or calling any API.
+Historical answer bodies remain, even when they contain old source numbers. Deleted
+citations retain only chunk/document identity, name, page and `source_status=deleted`;
+there is no `content`, vector, original URL or metadata payload. Related rewrite
+materials and session context are invalidated. Late answers/history writes recheck
+the durable source state and cannot restore evidence.
+
+Keep the database tombstones when restoring a backup or rolling back the app.
+Startup and CLI recovery replay them before resuming ingestion/index service,
+including completed tombstones when older managed files were restored. Restored
+snapshots/manifests cannot override readiness or revive a source. External original
+input directories and user-owned backups are not traversed or erased. Re-uploading
+identical bytes after successful deletion creates a new document ID; old citations
+remain deleted. This is application-level erasure of readable managed material,
+not a secure-wipe promise for storage media or an external generation provider.
