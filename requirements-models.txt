@@ -1,0 +1,5 @@
+# Local inference; weights are prepared separately, never at normal startup.
+langchain-huggingface>=0.1.0
+sentence-transformers>=3.0.0
+huggingface-hub>=0.23.0
+torch>=2.2.0

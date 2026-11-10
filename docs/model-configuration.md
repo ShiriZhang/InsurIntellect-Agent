@@ -44,7 +44,7 @@
 
 无网络测试用本地编码替身与生成 API 的内存 HTTP 替身检查配置隔离、同步/异步编码、生成请求、日志脱敏和出站请求边界；不下载真实权重，不把替身结果作为真实模型验收。
 
-任务 1.2 已提供下述准备和诊断入口；任务 1.3 已提供 revision/tokenizer 指纹、兼容判断及输入预算。任务 4.1 负责将指纹接入 collection/索引快照的隔离与加载。任务 9.1–9.2 负责启动脚本、完整依赖与 Docker/健康诊断交付；现有健康接口尚不能用来证明真实模型或生成服务可用。
+任务 1.2 已提供下述准备和诊断入口；任务 1.3 已提供 revision/tokenizer 指纹、兼容判断及输入预算。任务 4.1 负责将指纹接入 collection/索引快照的隔离与加载。任务 9.1–9.2 负责启动脚本、完整依赖与 Docker/健康诊断交付；被动诊断与显式生成预检的合同见 [运行指南](runtime-and-migration.md)。
 
 ## 首次准备与缓存离线运行
 
@@ -122,8 +122,5 @@ python -m scripts.prepare_models --check-generation
 
 ## 重建步骤
 
-1. 停止使用旧库的入库/查询，保存原 PDF、SQLite、索引目录、配置及删除日志。不要把修改模型配置当作已迁移向量，也不要覆盖或删除唯一源文件。
-2. 固定新的本地模型 revision、预处理、前缀、预算与切块参数。运行 `python -m scripts.prepare_models --download` 准备资源，再运行不带下载选项的预检；记录返回的完整 embedding profile 和 fingerprint。
-3. 使用新的空 Chroma 与 processed 目录，从仍有效的原 PDF 重新解析、编码并构建关键词资源。当前样本 CLI 可通过 `--persist-dir` 和 `PROCESSED_DATA_PATH` 指向新目录；不要对唯一旧目录使用 `--reset`。新建 collection 已显式使用 cosine；给已有 collection 传入新 metadata 不会把旧 L2 向量自动转换为 cosine。
-4. 比较新索引保存的 profile 与当前 profile，验证来源、输入完整性和真实检索/回答，再切换应用配置到匹配的新目录。索引 profile 的自动持久化、按指纹隔离和发布接入由 4.1–4.3 完成；目前应保留预检记录并将该切换视为需人工核对的准备步骤，不能声称已通过完整发布验收。
-5. 需要回退时恢复匹配的配置/模型/索引，保留新增来源并优先重放删除日志。不能从旧快照恢复已删除资料，也不能以丢弃新增文档实现回退。
+当前已接入指纹隔离与一致发布；操作以 [运行、迁移与安全回退指南](runtime-and-migration.md) 为准。
+不再支持旧 `--persist-dir`、`--collection` 或 `--reset` 参数；新目录通过 Settings 配置。

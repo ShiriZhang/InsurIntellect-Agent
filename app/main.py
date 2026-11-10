@@ -83,6 +83,8 @@ async def lifespan(app: FastAPI):
         logger.info("自动重启监控已启动")
         structured_logger.info("auto_restart_monitoring_started")
 
+    from app.api.endpoints.queries import query_service
+    app.state.query_processor = query_service.scoped
     from app.services.document_ingestion import DocumentIngestionService
     ingestion = DocumentIngestionService()
     app.state.document_ingestion = ingestion

@@ -2,8 +2,7 @@
 健康检查 API 端点
 """
 
-import asyncio
-from datetime import datetime, timedelta
+import time
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -16,64 +15,51 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/", response_model=HealthCheck, summary="基础健康检查")
+async def diagnostics(request: Request):
+    """Passive observations only: never load models, download or call a provider."""
+    from app.core.config import settings
+    ingestion = getattr(request.app.state, "document_ingestion", None)
+    coordinator = getattr(request.app.state, "index_coordinator", None)
+    processor = getattr(request.app.state, "query_processor", None)
+    embedding = getattr(processor, "embedding", None) or getattr(ingestion, "embedding", None)
+    local = (embedding.diagnostics() if embedding is not None else {
+        "status": "not_checked", "device": None, "cache_status": "not_checked",
+        "model": settings.LOCAL_EMBEDDING_MODEL,
+        "revision": settings.LOCAL_EMBEDDING_REVISION,
+    })
+    if embedding is not None:
+        local["cache_status"] = "loaded"  # Actual load, not just a directory existing.
+    local["cache_directory"] = settings.LOCAL_EMBEDDING_CACHE_DIR
+    if not settings.LOCAL_EMBEDDING_REVISION:
+        local["status"] = "unavailable"
+        local["reason"] = "revision_not_configured"
+    generation = {"status": "not_checked" if settings.generation_configured else "unavailable",
+                  "configured": settings.generation_configured}
+    observation = getattr(request.app.state, "generation_check", None)
+    if observation and observation[0] > time.monotonic():
+        generation.update(observation[1])
+    index = {"status": "unavailable", "commit_id": None}
+    if coordinator is not None:
+        with coordinator.state.lock:
+            current = coordinator.state.current
+            index = {"status": "ready" if coordinator.state.serving and current else "not_ready",
+                     "commit_id": current.id if current else None}
+            if current and local.get("embedding_profile") != current.profile:
+                index["status"] = "profile_not_checked_or_mismatched"
+    database = await db_manager.health_check()
+    ready = (database and index["status"] == "ready" and local["status"] == "ready"
+             and generation["status"] == "available")
+    return {"status": "ready" if ready else "not_ready", "database_status": database,
+            "index": index, "local_embedding": local, "generation": generation}
+
+
+@router.get("/", response_model=HealthCheck, summary="被动健康诊断")
 async def health_check(request: Request):
-    """
-    基础健康检查端点
-    检查数据库、向量数据库和 LLM 服务的状态
-    """
-    try:
-        # 检查数据库
-        db_status = True
-        try:
-            db_status = await db_manager.health_check()
-        except Exception as e:
-            logger.warning(f"数据库检查失败: {e}")
-            db_status = False
-
-        # 检查向量数据库（在开发环境中视为可选）
-        vector_db_status = True
-        try:
-            vector_service = getattr(request.app.state, "vector_service", None)
-            if vector_service:
-                stats = await vector_service.get_collection_stats()
-                # 只要能获取到统计信息就认为正常
-                vector_db_status = stats.get("total_vectors", 0) >= 0
-            else:
-                logger.info("Vector service not configured; treating as healthy in dev mode")
-                vector_db_status = True
-        except Exception as e:
-            logger.warning(f"向量数据库检查失败: {e}")
-            vector_db_status = True
-
-        # 检查 LLM 服务
-        llm_status = True
-        try:
-            llm_service = getattr(request.app.state, "llm_service", None)
-            if llm_service:
-                # 在开发环境中，LLM 服务问题不影响整体状态
-                try:
-                    llm_status = await asyncio.wait_for(llm_service.health_check(), timeout=3.0)
-                except (asyncio.TimeoutError, Exception) as e:
-                    logger.warning(f"LLM 服务健康检查失败，但系统仍可用: {e}")
-                    llm_status = True
-            else:
-                logger.warning("LLM service not found in app state")
-                llm_status = True
-        except Exception as e:
-            logger.warning(f"LLM 服务检查失败: {e}")
-            llm_status = True
-
-        return HealthCheck(
-            status="healthy" if all([db_status, vector_db_status, llm_status]) else "unhealthy",
-            database_status=db_status,
-            vector_db_status=vector_db_status,
-            llm_status=llm_status,
-        )
-
-    except Exception as e:
-        logger.error(f"健康检查端点发生错误: {e}")
-        return HealthCheck(status="unhealthy", database_status=False, vector_db_status=False, llm_status=False)
+    data = await diagnostics(request)
+    return HealthCheck(status="healthy" if data["status"] == "ready" else "degraded",
+                       database_status=data["database_status"],
+                       vector_db_status=data["index"]["status"] == "ready",
+                       llm_status=data["generation"]["status"] == "available")
 
 
 @router.get("/stats", response_model=SystemStats, summary="系统统计信息")
@@ -137,41 +123,44 @@ async def get_system_stats(request: Request, db: AsyncSession = Depends(get_db))
         return SystemStats(total_documents=0, total_chunks=0, total_queries=0, avg_response_time=0.0, storage_used=0, uptime=0.0)
 
 
-@router.get("/ready", summary="就绪检查")
+@router.get("/ready", summary="被动就绪诊断")
 async def readiness_check(request: Request):
-    """
-    就绪检查端点（用于 Kubernetes 等容器编排系统）
-    """
-    try:
-        # 检查关键服务是否就绪
-        vector_service = getattr(request.app.state, "vector_service", None)
-        if not vector_service:
-            return {"status": "not_ready", "reason": "vector_service_not_initialized"}
-        return {"status": "ready"}
-    except Exception as e:
-        logger.error(f"就绪检查失败: {e}")
-        return {"status": "not_ready", "reason": str(e)}
+    from fastapi.responses import JSONResponse
+    data = await diagnostics(request)
+    return JSONResponse(data, status_code=200 if data["status"] == "ready" else 503)
 
 
-@router.get("/model", summary="模型信息")
-async def get_model_info():
-    """
-    获取当前配置的模型信息
-    """
+@router.get("/model", summary="被动模型诊断")
+async def get_model_info(request: Request):
+    data = await diagnostics(request)
+    return {"local_embedding": data["local_embedding"], "generation": data["generation"]}
+
+
+@router.post("/check-local", summary="显式本地模型预检（仅缓存，不下载）")
+async def check_local(request: Request):
+    import asyncio
+    from app.services.embedding_service import LocalEmbeddingUnavailable
+    processor = getattr(request.app.state, "query_processor", None)
+    if processor is None:
+        return {"status": "unavailable", "reason": "query_processor_not_initialized"}
     try:
-        from app.core.config import settings
-        return {
-            # 兼容旧字段，同时暴露轻量/核心模型
-            "model": settings.OPENAI_MODEL,
-            "core_model": getattr(settings, "OPENAI_MODEL_CORE", settings.OPENAI_MODEL),
-            "light_model": getattr(settings, "OPENAI_MODEL_LIGHT", settings.OPENAI_MODEL),
-            "base_url": settings.OPENAI_BASE_URL or getattr(settings, "SILICONFLOW_BASE_URL", None),
-            "embedding_model": settings.OPENAI_EMBEDDING_MODEL,
-            "status": "connected",
-        }
-    except Exception as e:
-        logger.error(f"获取模型信息失败: {e}")
-        return {"model": "Unknown", "base_url": "Unknown", "embedding_model": "Unknown", "status": "error"}
+        return await asyncio.to_thread(processor.preflight)
+    except LocalEmbeddingUnavailable:
+        return {"status": "unavailable", "reason": "local_model_preflight_failed"}
+
+
+@router.post("/check-generation", summary="显式生成 API 预检（可能收费）")
+async def check_generation(request: Request):
+    from app.services.llm_service import LLMService
+    service = LLMService()
+    try:
+        result = await service.preflight()
+        # Short-lived observation, never a permanent connectivity guarantee.
+        request.app.state.generation_check = (time.monotonic() + 60, result)
+        return result
+    finally:
+        if service.client is not None:
+            await service.client.close()
 
 
 @router.get("/live", summary="存活检查")

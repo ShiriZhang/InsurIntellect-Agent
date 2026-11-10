@@ -24,6 +24,7 @@ classifiers = [
 Homepage = "https://github.com/Phoenix0531-sudo/InsurIntellect-Agent"
 
 [project.optional-dependencies]
+local-models = ["langchain-huggingface>=0.1.0", "sentence-transformers>=3.0.0", "huggingface-hub>=0.23.0", "torch>=2.2.0"]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.6.0",

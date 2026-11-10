@@ -6,6 +6,7 @@ Does not print secrets.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -15,9 +16,9 @@ import urllib.request
 BASE = os.environ.get("INSUR_DEMO_BASE", "http://127.0.0.1:8766").rstrip("/")
 
 
-def post_ask(question: str) -> dict:
+def post_ask(question: str, document_ids: list[int]) -> dict:
     payload = json.dumps(
-        {"question": question, "stream": False, "show_sources": True},
+        {"question": question, "document_ids": document_ids, "query_mode": "qa", "stream": False, "show_sources": True},
         ensure_ascii=False,
     ).encode("utf-8")
     req = urllib.request.Request(
@@ -31,6 +32,9 @@ def post_ask(question: str) -> dict:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--document-ids", type=int, nargs="+", required=True)
+    args = parser.parse_args()
     cases = [
         {
             "id": "Q1",
@@ -72,7 +76,7 @@ def main() -> int:
     failed = 0
     for c in cases:
         try:
-            data = post_ask(c["q"])
+            data = post_ask(c["q"], args.document_ids)
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")[:300]
             print(c["id"], "HTTP", e.code, body)

@@ -38,6 +38,13 @@ class ScopedQueryProcessor:
         self.embedding = None
         self._model_lock = threading.Lock()
 
+    def preflight(self):
+        """Explicit local-only model preparation, serialized with query encoding."""
+        with self._model_lock:
+            if self.embedding is None:
+                self.embedding = self.embedding_factory()
+            return self.embedding.preflight()
+
     def _encode(self, question, profile):
         with self._model_lock:
             if self.embedding is None:

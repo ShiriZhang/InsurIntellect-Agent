@@ -14,8 +14,6 @@ langchain-chroma>=0.1.0
 langchain-community>=0.2.0
 langchain-core>=0.2.0
 langchain-text-splitters>=0.2.0
-langchain-huggingface>=0.1.0
-sentence-transformers>=3.0.0
 chromadb>=0.5.0
 
 # Main-path PDF ingestion
@@ -23,7 +21,7 @@ PyMuPDF>=1.28.0
 python-multipart>=0.0.32
 
 # Database
-sqlalchemy>=2.0.0
+sqlalchemy[asyncio]>=2.0.0
 aiosqlite>=0.22.1
 
 # Retrieval / ranking
@@ -39,3 +37,6 @@ aiofiles>=24.0.0
 PyYAML>=6.0.0
 psutil>=5.9.0
 tenacity>=8.5.0
+
+# Full local model runtime (install the CPU/CUDA torch wheel first).
+-r requirements-models.txt

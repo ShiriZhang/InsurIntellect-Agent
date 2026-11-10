@@ -43,6 +43,16 @@ COPY . .
 EXPOSE 8766
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD python -c "import os, urllib.request; port=os.getenv('PORT','8766'); urllib.request.urlopen(f'http://127.0.0.1:{port}/api/v1/health/', timeout=5).read()"
+    CMD python -c "import os, urllib.request; port=os.getenv('PORT','8766'); urllib.request.urlopen(f'http://127.0.0.1:{port}/api/v1/health/live', timeout=5).read()"
 
 CMD ["sh", "-c", "uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8766}"]
+
+# Optional complete runtime. Build with --target full and mount prepared cache.
+FROM runtime AS full
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir "torch>=2.2.0" --index-url ${TORCH_INDEX_URL}
+COPY requirements-models.txt .
+RUN pip install --no-cache-dir -r requirements-models.txt
+
+# Keep the default build lightweight.
+FROM runtime AS default

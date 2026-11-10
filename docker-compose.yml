@@ -22,12 +22,14 @@ services:
       PROCESSED_DATA_PATH: /app/data/processed
       PDF_STORAGE_PATH: /app/data/documents/pdfs
       DATABASE_URL: sqlite:////app/data/database/app.db
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://host.docker.internal:31876/v1}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
-      OPENAI_MODEL_CORE: ${OPENAI_MODEL_CORE:-gpt-5.4}
-      OPENAI_MODEL_LIGHT: ${OPENAI_MODEL_LIGHT:-gpt-5.4}
-      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-local:hash}
+      LOCAL_EMBEDDING_MODEL: ${LOCAL_EMBEDDING_MODEL:-BAAI/bge-m3}
+      LOCAL_EMBEDDING_REVISION: ${LOCAL_EMBEDDING_REVISION:-}
+      LOCAL_EMBEDDING_CACHE_DIR: /app/data/models
+      LOCAL_EMBEDDING_DEVICE: ${LOCAL_EMBEDDING_DEVICE:-auto}
+      LOCAL_EMBEDDING_BATCH_SIZE: ${LOCAL_EMBEDDING_BATCH_SIZE:-32}
+      GENERATION_API_BASE_URL: ${GENERATION_API_BASE_URL:-}
+      GENERATION_API_KEY: ${GENERATION_API_KEY:-}
+      GENERATION_MODEL: ${GENERATION_MODEL:-}
       SIMILARITY_THRESHOLD: ${SIMILARITY_THRESHOLD:-0.32}
     volumes:
       - ./data:/app/data
@@ -38,7 +40,7 @@ services:
         - CMD
         - python
         - -c
-        - "import os, urllib.request; port=os.getenv('PORT','8766'); urllib.request.urlopen(f'http://127.0.0.1:{port}/api/v1/health/', timeout=5).read()"
+        - "import os, urllib.request; port=os.getenv('PORT','8766'); urllib.request.urlopen(f'http://127.0.0.1:{port}/api/v1/health/live', timeout=5).read()"
       interval: 30s
       timeout: 5s
       retries: 3

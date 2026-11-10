@@ -51,3 +51,8 @@ CHANGELOG.md
 requirements-advanced.txt
 requirements-optional.txt
 requirements-dev.txt
+
+# Never bake model snapshots, library journals or agent configuration into images.
+data/
+.agents/
+.codex/

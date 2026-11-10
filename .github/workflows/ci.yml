@@ -100,5 +100,6 @@ jobs:
             -e CHROMA_DISABLE_TELEMETRY=1 \
             insurintellect-agent:ci
           sleep 8
-          docker exec ci-smoke python -c "import urllib.request,json; r=urllib.request.urlopen('http://127.0.0.1:8766/api/v1/health/',timeout=10); print('health', r.status, r.read()[:120])"
+          docker exec ci-smoke python -c "import urllib.request,json; r=urllib.request.urlopen('http://127.0.0.1:8766/api/v1/health/live',timeout=10); print('health', r.status, r.read()[:120])"
+          docker exec ci-smoke python -c "import http.client; c=http.client.HTTPConnection('127.0.0.1',8766,timeout=10); c.request('GET','/api/v1/health/ready'); r=c.getresponse(); assert r.status==503, r.status; print(r.read().decode())"
           docker rm -f ci-smoke

@@ -1,5 +1,7 @@
 # InsurIntellect: An Open-Source Insurance-Clause AI Agent for Local Policy PDF Applications using Large Language Models
 
+Runtime/install, CPU/GPU Docker, explicit-scope smoke and safe migration: [guide / 指南](docs/runtime-and-migration.md).
+
 [English](README.md) | [中文](README.zh-CN.md)
 
 **Document uploads, explicit scopes, bilingual QA and deletion:** [User guide](docs/user-guide.md) · [API contract](docs/document-query-api.md)
@@ -239,7 +241,7 @@ Public synthetic `samples/` can be uploaded or imported with
 `python -m scripts.simple_ingest --pdf-dir samples`. Deletion clears managed sources and
 historical excerpts while retaining answer bodies. The [real-service browser walkthrough](docs/reviews/batch-8-operation.md)
 does not replace formal quality acceptance. A lightweight Docker liveness check does not
-establish complete QA readiness; deployment profiles and legacy-script migration are separate work.
+establish complete QA readiness; deployment profiles and migration steps are in the [runtime guide](docs/runtime-and-migration.md).
 
 ---
 
@@ -311,7 +313,7 @@ InsurIntellect-Agent
 ├── tests/                      # CI without live LLM keys
 ├── docs/screenshots/
 ├── .env.example
-├── requirements.txt           # lightweight main path
+├── requirements.txt           # full local-model and application dependencies
 ├── requirements-dev.txt
 ├── requirements-docker.txt    # quick Docker health/demo profile, no torch download
 ├── docker-compose.yml         # fixed container_name: insurintellect-agent

@@ -1,5 +1,7 @@
 # InsurIntellect：面向本地保险条款 PDF 应用的开源证据型 AI Agent 系统，基于大语言模型生成带引用回答
 
+运行安装、CPU/GPU Docker、显式范围冒烟与安全迁移：[guide / 指南](docs/runtime-and-migration.md).
+
 [English](README.md) | [中文](README.zh-CN.md)
 
 **文档库上传、显式范围、双语问答与删除：** [用户说明](docs/user-guide.zh-CN.md) · [接口合同](docs/document-query-api.md)
@@ -236,7 +238,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8766
 样例 `samples/` 为公开合成条款，可网页上传，或用
 `python -m scripts.simple_ingest --pdf-dir samples` 导入。删除清理托管来源及历史摘录，保留答案正文。
 [真实服务浏览器操作记录](docs/reviews/batch-8-operation.md)不替代正式质量验收。
-轻量 Docker 的应用存活检查不能证明完整问答就绪；部署配置和旧脚本迁移另行交付。
+轻量 Docker 的应用存活检查不能证明完整问答就绪；部署配置和旧脚本迁移见[运行指南](docs/runtime-and-migration.md)。
 
 ---
 
@@ -308,7 +310,7 @@ InsurIntellect-Agent
 ├── tests/                      # CI 不依赖真实 LLM Key
 ├── docs/screenshots/
 ├── .env.example
-├── requirements.txt           # 轻量主路径
+├── requirements.txt           # 完整本地模型与应用依赖
 ├── requirements-dev.txt
 ├── requirements-docker.txt    # Docker 快速 health/demo 配置，不下载 torch
 ├── docker-compose.yml         # 固定 container_name: insurintellect-agent
